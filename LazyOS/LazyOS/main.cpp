@@ -19,8 +19,15 @@ std::tuple<string, std::vector<string>> parse_line(string & line) {
 }
 
 int main() {
-	LazyOS os;
-
+	//LazyOS::inode inode = { 0 };
+	//inode.uid = 0xAFBEADDE;
+	//GV::os.write_inode(0, inode);
+	//inode.uid = 0xAFBEADDE;
+	//GV::os.write_inode(1, inode);
+	//GV::os.read_inode(0);
+	//GV::os.get_free_block();
+	//GV::os.load_root();
+	core::fcreate("/");
 	string line;
 	while (true) {
 		std::getline(std::cin, line);
@@ -28,10 +35,11 @@ int main() {
 		auto[command, args] = parse_line(line);
 		if (command == "init")
 			if (!args.empty())
-				os.resize(std::stoi(args[0]) << 20, 512);
+				GV::os.resize(std::stoi(args[0]) << 20, 512);
 			else
-				os.resize(512 << 20, 512);
-
+				GV::os.resize(512 << 20, 512);
+		if (command == "exit")
+			return 0;
 		cout << "command: " << command<< endl << "args: " << util::join(args, ", ") << endl;
 
 	}

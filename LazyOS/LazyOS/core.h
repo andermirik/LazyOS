@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "globals.h"
 
 namespace core {
 	int fcreate(std::string filename);                       //create file
