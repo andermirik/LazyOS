@@ -36,4 +36,15 @@ namespace util {
 		}
 		return str;
 	}
+
+	uint16_t write_first_4_bits(uint16_t mode, uint8_t num)
+	{
+		mode |= (num & 0x0F)<<12;
+		return mode;
+	}
+	uint16_t write_rwxrwxrwx(uint16_t mode, uint8_t num)
+	{
+		mode |= (num &0x1FF);
+		return mode;
+	}
 }

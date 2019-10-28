@@ -27,7 +27,11 @@ int main() {
 	//GV::os.read_inode(0);
 	//GV::os.get_free_block();
 	//GV::os.load_root();
-	core::fcreate("/");
+
+	
+	core::fcreate("/some_file3/some/");
+	uint16_t mode=0;
+	util::write_first_4_bits(mode, 1);
 	string line;
 	while (true) {
 		std::getline(std::cin, line);

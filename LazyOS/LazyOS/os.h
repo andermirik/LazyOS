@@ -30,8 +30,10 @@ public:
 	super_block read_super_block();
 
 	uint32_t get_free_block();
+	uint32_t get_free_inode();
 
-	void load_root();
+	void read_block_indirect(inode& inode, int block_number, char buf[512]);
+	void write_block_indirect(inode& inode, int block_number, char buf[512]);
 
 	struct super_block {
 		uint32_t magic;            //является ли LazyOS
@@ -69,11 +71,22 @@ public:
 
 	struct directory_file {
 		uint32_t n_inode;
-		char filename[54];
-		char extension[6];
-	};
+		char filename[54] = {0};
+		char extension[6] = {0};
 
-	directory_file root[128];      //128 файлов
+		directory_file() {
+		};
+
+		directory_file(uint32_t n_inode, std::string filename) {
+			this->n_inode = n_inode;
+			if(filename.find_last_of('.') != std::string::npos)
+				strcpy_s(this->filename, filename.substr(0, filename.find_last_of('.')).c_str());
+			else 
+				strcpy_s(this->filename, filename.c_str());
+			if (filename.find_last_of('.') != std::string::npos)
+				strcpy_s(this->extension, filename.substr(filename.find_last_of('.')).c_str());
+		}
+	};
 
 };
 
