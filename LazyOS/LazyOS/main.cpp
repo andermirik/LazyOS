@@ -29,7 +29,13 @@ int main() {
 	//GV::os.load_root();
 
 	
-	core::fcreate("/some_file3/some/");
+	std::cout << core::fcreate("/some_file1/") << std::endl;
+	std::cout << core::fcreate("/some_file1/dir2/") << std::endl;
+	std::cout << core::fcreate("/some_file1/dir3/") << std::endl;
+	std::cout << core::fcreate("/some_file1/dir2/file2/") << std::endl;
+	std::cout << core::fcreate("/some_file1/dir3/file2/") << std::endl;
+	std::cout << core::fcreate("/some_file1/dir3/file2/") << std::endl;
+
 	uint16_t mode=0;
 	util::write_first_4_bits(mode, 1);
 	string line;

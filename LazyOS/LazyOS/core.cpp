@@ -1,22 +1,21 @@
 #include "core.h"
 #include <chrono>
 #include "utils.h"
-void readall(LazyOS::inode& inode, std::vector<std::string>& dirs, int i);
-int core::fcreate(std::string filename)
-{
 
-
-	/*
+/*
 	0xD  - dir
 	0x5D - system dir
 	0xF  - file
 	0x5F - system file
 	*/
 
+int create_file(int inode_number, LazyOS::inode& inode, LazyOS::inode& new_inode, std::vector<std::string>& dirs, int k);
+int core::fcreate(std::string filename)
+{
 	auto now = std::chrono::system_clock::now();
 	auto dirs = util::split(filename, '/');
 	if (dirs[0] == "" && dirs[1] == "" && dirs.size() == 2) { //root
-		LazyOS::inode inode;//20000
+		LazyOS::inode inode = {0};//20000
 		inode.mode = 0x5D;
 		inode.date_creation = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 		inode.date_modification = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
@@ -37,100 +36,128 @@ int core::fcreate(std::string filename)
 		GV::os.write_inode(0, inode);
 	}
 	else if (dirs[dirs.size() - 1] != "" && dirs.size() > 1) {  //file
-		auto root = GV::os.read_inode(GV::os.superblock.root_inode);
-		LazyOS::directory_file files[128];
+		LazyOS::inode n_inode = { 0 };
+		n_inode.mode = util::write_first_4_bits(n_inode.mode, 0xF);
+		n_inode.mode = util::write_rwxrwxrwx(n_inode.mode, 0000);
+		n_inode.date_creation = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+		n_inode.date_modification = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
-		char buf[512];
-		int t = 0;
-		for (int i = 0; i < 16; i++) {
-			GV::os.read_block_indirect(root, i, buf);
-			for(int j=0;j<8;j++)
-				memcpy(&files[t++], buf + j* sizeof(LazyOS::directory_file), sizeof(LazyOS::directory_file));
-		}
-		LazyOS::inode inode = {0};
+		LazyOS::inode root = GV::os.read_inode(GV::os.superblock.root_inode);
 
-		inode.mode = util::write_first_4_bits(inode.mode, 0xD);
-		inode.mode = util::write_rwxrwxrwx(inode.mode, 0000);
-		inode.date_creation = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-		inode.date_modification = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-
-		uint32_t free_inode = GV::os.get_free_inode();
-		GV::os.write_inode(free_inode, inode);
-		GV::os.set_bit(free_inode+256, 0x1);
+		return create_file(0, root, n_inode, dirs, 1);
 	}
 	else if (dirs[dirs.size() - 1] == "" && dirs.size() > 2) { //dir
-		auto root = GV::os.read_inode(GV::os.superblock.root_inode);
-		uint32_t free_inode = GV::os.get_free_inode();
 
-		LazyOS::directory_file files[128];
-		if (dirs.size() == 3) {
-			char buf[512];
-			int t = 0;
-			for (int i = 0; i < 16; i++) {
-				GV::os.read_block_indirect(root, i, buf);
-				for (int j = 0; j < 8; j++) {
-					memcpy(&files[t++], buf + j * sizeof(LazyOS::directory_file), sizeof(LazyOS::directory_file));
-					std::string tmp;
-					tmp.append(files[t - 1].filename);
-					if (strlen(files[t - 1].extension) != 0) {
-						tmp.append(".");
-						tmp.append(files[t - 1].extension);
-					}
-					if (tmp == dirs[dirs.size() - 2])
-						return -1;
-				}
-			}
+		LazyOS::inode n_inode = { 0 };
+		n_inode.mode = util::write_first_4_bits(n_inode.mode, 0xD);
+		n_inode.mode = util::write_rwxrwxrwx(n_inode.mode, 0000);
+		n_inode.date_creation = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+		n_inode.date_modification = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
-			LazyOS::directory_file file(free_inode, dirs[dirs.size() - 2]);
-			files[root.size / 64] = file;
-			root.size += sizeof(LazyOS::directory_file);
-			GV::os.write_inode(0, root);
+		LazyOS::inode root = GV::os.read_inode(GV::os.superblock.root_inode);
 
-			t = 0;
-			for (int i = 0; i < 16; i++) {
-				for (int j = 0; j < 8; j++)
-					memcpy(buf + j * sizeof(LazyOS::directory_file), &files[t++], sizeof(LazyOS::directory_file));
-				GV::os.write_block_indirect(root, i, buf);
-			}
-		}
-		else {
-			readall(root, dirs, 1);
-			for (int i = 0; i < dirs.size() - 2; i++) {//пройти по каждой директории
-				
-
-				
-
-			
-			}
-		}
-		LazyOS::inode inode = {0};
-		inode.mode = util::write_first_4_bits(inode.mode, 0xD);
-		inode.mode = util::write_rwxrwxrwx(inode.mode, 0000);
-		inode.date_creation = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-		inode.date_modification = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-
-		GV::os.write_inode(free_inode, inode);
-		GV::os.set_bit(free_inode + 256, 0x1);
+		return create_file(0, root, n_inode, dirs, 1);
 	}
+
 	return 0;
 }
-void readall(LazyOS::inode& inode, std::vector<std::string>& dirs, int k) {
-	char buf[512];
-	LazyOS::directory_file file;
-	
-	if (k == dirs.size() - 2) {
-		//запись
-		return;
-	}
 
+int core::fopen(std::string filename)
+{
+	return 0;
+}
+
+int core::fdelete(int file)
+{
+	return 0;
+}
+
+int core::fread()
+{
+	return 0;
+}
+
+int core::fwrite()
+{
+	return 0;
+}
+
+int core::fappend()
+{
+	return 0;
+}
+
+int core::fseek()
+{
+	return 0;
+}
+
+int core::fget_attributes()
+{
+	return 0;
+}
+
+int core::fset_attributes()
+{
+	return 0;
+}
+
+int core::frename()
+{
+	return 0;
+}
+
+std::string file_to_filename(LazyOS::directory_file file) {
+	std::string tmp;
+	tmp.append(file.filename);
+	if (strlen(file.extension) != 0) {
+		tmp.append(".");
+		tmp.append(file.extension);
+	}
+	return tmp;
+}
+
+int create_file(int inode_number, LazyOS::inode& inode, LazyOS::inode& new_inode, std::vector<std::string>& dirs, int k) {
+	char buf[512];
+	//insert file
+	if (k == dirs.size() - 2) {
+		auto now = std::chrono::system_clock::now();
+		uint32_t free_inode = GV::os.get_free_inode();
+
+		LazyOS::directory_file files[8];
+		LazyOS::directory_file file(free_inode, dirs[dirs.size() - 2]);
+		GV::os.read_block_indirect(inode, inode.size / 512, buf);
+
+		memcpy(files, buf, 512);
+		for(int i=0;i<8;i++)
+			if (file_to_filename(files[i]) == dirs[dirs.size() - 2]) {
+				return 0;
+			}
+		files[inode.size / 64] = file;
+		memcpy(buf, files, 512);
+
+		inode.size += 64;
+		
+		GV::os.write_block_indirect(inode, inode.size / 512, buf);
+		GV::os.write_inode(inode_number, inode);
+
+		
+		GV::os.write_inode(free_inode, new_inode);
+		GV::os.set_bit(free_inode + 256, 0x1);
+
+		return 1;
+	}
+	//search directory to insert
 	for (int i = 0; i < inode.size/64; i++) {
 		if(i%8==0)
 			GV::os.read_block_indirect(inode, i, buf);
+		LazyOS::directory_file file;
 		memcpy(&file, buf + i * sizeof(LazyOS::directory_file), sizeof(LazyOS::directory_file));
 		if (strcmp(dirs[k].c_str(), file.filename) == 0) {
 			inode = GV::os.read_inode(file.n_inode);
-			readall(inode, dirs, k + 1);
+			return create_file(file.n_inode, inode, new_inode, dirs, k + 1);
 		}
 		continue;
 	}
+	return 0;
 }

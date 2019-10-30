@@ -148,30 +148,70 @@ uint32_t LazyOS::get_free_inode()
 void LazyOS::read_block_indirect(inode & inode, int block_number, char buf[512])
 {   
 	//0 indirect [0 - 11]
-	if (block_number < 12) {                                                           
+	if (block_number < 12) {
+		if (inode.blocks[block_number] == 0) {
+			inode.blocks[block_number] = get_free_block();
+			set_bit(inode.blocks[block_number], 0x1);
+		}
 		bios_read_sector(inode.blocks[block_number], buf);
 	}
 	//1 indirect [12 - 155]
-	else if (block_number >= 12 && block_number <= 155) {                              
+	else if (block_number >= 12 && block_number <= 155) {
 		uint32_t ind[144] = { 0 };
+		if (inode.blocks[12] == 0) {
+			inode.blocks[12] = get_free_block();
+			set_bit(inode.blocks[12], 0x1);
+		}
 		bios_read_sector(inode.blocks[12], (char*)ind);
-		bios_read_sector(ind[block_number-12], buf);
+		if (ind[block_number - 12] == 0) {
+			ind[block_number - 12] = get_free_block();
+			set_bit(ind[block_number - 12], 0x1);
+		}
+		bios_read_sector(ind[block_number - 12], buf);
 	}
 	//2 indirect [156 - 155+144*144]
-	else if (block_number >= 156 && block_number <= 155+144*144) {                      
+	else if (block_number >= 156 && block_number <= 155 + 144 * 144) {
 		uint32_t ind[144] = { 0 };
+		if (inode.blocks[13] == 0) {
+			inode.blocks[13] = get_free_block();
+			set_bit(inode.blocks[13], 0x1);
+		}
 		bios_read_sector(inode.blocks[13], (char*)ind);
 		block_number -= 156;
+		if (ind[block_number / 144] == 0) {
+			ind[block_number / 144] = get_free_block();
+			set_bit(ind[block_number / 144], 0x1);
+		}
 		bios_read_sector(ind[block_number / 144], (char*)ind);
+		if (ind[block_number / 144 + block_number % 144]) {
+			ind[block_number / 144 + block_number % 144] = get_free_block();
+			set_bit(ind[block_number / 144 + block_number % 144], 0x1);
+		}
 		bios_read_sector(ind[block_number / 144 + block_number % 144], buf);
 	}
 	//3 indirect [156+144*144 - 155+144*144 + 144*144*144]
-	else if (block_number >= 156+144*144 && block_number <= 155+144*144 + 144*144*144) { 
+	else if (block_number >= 156 + 144 * 144 && block_number <= 155 + 144 * 144 + 144 * 144 * 144) {
 		uint32_t ind[144] = { 0 };
+		if (inode.blocks[14] == 0) {
+			inode.blocks[14] = get_free_block();
+			set_bit(inode.blocks[14], 0x1);
+		}
 		bios_read_sector(inode.blocks[14], (char*)ind);
 		block_number -= 156 + 144 * 144;
+		if (ind[(block_number) / 144 / 144] == 0) {
+			ind[(block_number) / 144 / 144] = get_free_block();
+			set_bit(ind[(block_number) / 144 / 144], 0x1);
+		}
 		bios_read_sector(ind[(block_number) / 144 / 144], (char*)ind);
+		if (ind[(block_number) / 144] == 0) {
+			ind[(block_number) / 144] = get_free_block();
+			set_bit(ind[(block_number) / 144], 0x1);
+		}
 		bios_read_sector(ind[(block_number) / 144], (char*)ind);
+		if (ind[(block_number) / 144 + (block_number) % 144] == 0) {
+			ind[(block_number) / 144 + (block_number) % 144] = get_free_block();
+			set_bit(ind[(block_number) / 144 + (block_number) % 144], 0x1);
+		}
 		bios_read_sector(ind[(block_number) / 144 + (block_number) % 144], buf);
 	}
 }
@@ -180,29 +220,69 @@ void LazyOS::write_block_indirect(inode & inode, int block_number, char buf[512]
 {
 	//0 indirect [0 - 11]
 	if (block_number < 12) {
+		if (inode.blocks[block_number] == 0) {
+			inode.blocks[block_number] = get_free_block();
+			set_bit(256 + inode.blocks[block_number], 0x1);
+		}
 		bios_write_sector(inode.blocks[block_number], buf);
 	}
 	//1 indirect [12 - 155]
 	else if (block_number >= 12 && block_number <= 155) {
 		uint32_t ind[144] = { 0 };
+		if (inode.blocks[12] == 0) {
+			inode.blocks[12] = get_free_block();
+			set_bit(256 + inode.blocks[12], 0x1);
+		}
 		bios_read_sector(inode.blocks[12], (char*)ind);
+		if (ind[block_number - 12] == 0) {
+			ind[block_number - 12] = get_free_block();
+			set_bit(256 + ind[block_number - 12], 0x1);
+		}
 		bios_write_sector(ind[block_number - 12], buf);
 	}
 	//2 indirect [156 - 155+144*144]
 	else if (block_number >= 156 && block_number <= 155 + 144 * 144) {
 		uint32_t ind[144] = { 0 };
+		if (inode.blocks[13] == 0) {
+			inode.blocks[13] = get_free_block();
+			set_bit(256 + inode.blocks[13], 0x1);
+		}
 		bios_read_sector(inode.blocks[13], (char*)ind);
 		block_number -= 156;
+		if (ind[block_number / 144] == 0) {
+			ind[block_number / 144] = get_free_block();
+			set_bit(256 + ind[block_number / 144], 0x1);
+		}
 		bios_read_sector(ind[block_number / 144], (char*)ind);
+		if (ind[block_number / 144 + block_number % 144]) {
+			ind[block_number / 144 + block_number % 144] = get_free_block();
+			set_bit(256 + ind[block_number / 144 + block_number % 144], 0x1);
+		}
 		bios_write_sector(ind[block_number / 144 + block_number % 144], buf);
 	}
 	//3 indirect [156+144*144 - 155+144*144 + 144*144*144]
 	else if (block_number >= 156 + 144 * 144 && block_number <= 155 + 144 * 144 + 144 * 144 * 144) {
 		uint32_t ind[144] = { 0 };
+		if (inode.blocks[14] == 0) {
+			inode.blocks[14] = get_free_block();
+			set_bit(256 + inode.blocks[14], 0x1);
+		}
 		bios_read_sector(inode.blocks[14], (char*)ind);
 		block_number -= 156 + 144 * 144;
+		if (ind[(block_number) / 144 / 144] == 0) {
+			ind[(block_number) / 144 / 144] = get_free_block();
+			set_bit(256 + ind[(block_number) / 144 / 144], 0x1);
+		}
 		bios_read_sector(ind[(block_number) / 144 / 144], (char*)ind);
+		if (ind[(block_number) / 144] == 0) {
+			ind[(block_number) / 144] = get_free_block();
+			set_bit(256 + ind[(block_number) / 144], 0x1);
+		}
 		bios_read_sector(ind[(block_number) / 144], (char*)ind);
+		if (ind[(block_number) / 144 + (block_number) % 144] == 0) {
+			ind[(block_number) / 144 + (block_number) % 144] = get_free_block();
+			set_bit(256 + ind[(block_number) / 144 + (block_number) % 144], 0x1);
+		}
 		bios_write_sector(ind[(block_number) / 144 + (block_number) % 144], buf);
 	}
 }

@@ -16,7 +16,4 @@ namespace core {
 	int fget_attributes();
 	int fset_attributes();
 	int frename();
-
-
-
 }

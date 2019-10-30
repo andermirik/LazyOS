@@ -71,20 +71,39 @@ public:
 
 	struct directory_file {
 		uint32_t n_inode;
-		char filename[54] = {0};
-		char extension[6] = {0};
+		char filename[54];
+		char extension[6];
 
 		directory_file() {
+			char filename[54] = { 0 };
+			char extension[6] = { 0 };
+			memcpy(this->filename, filename,  54);
+			memcpy(this->extension, extension, 6);
 		};
 
 		directory_file(uint32_t n_inode, std::string filename) {
 			this->n_inode = n_inode;
+
+			char f[54] = { 0 };
+			char e[6] = { 0 };
+			memcpy(this->filename, f, 54);
+			memcpy(this->extension, e, 6);
+
 			if(filename.find_last_of('.') != std::string::npos)
-				strcpy_s(this->filename, filename.substr(0, filename.find_last_of('.')).c_str());
+				memcpy(this->filename,
+					filename.substr(0, filename.find_last_of('.')).c_str(),
+					filename.substr(0, filename.find_last_of('.')).size()
+				);
 			else 
-				strcpy_s(this->filename, filename.c_str());
+				memcpy(this->filename,
+					filename.c_str(),
+					filename.size()
+				);
 			if (filename.find_last_of('.') != std::string::npos)
-				strcpy_s(this->extension, filename.substr(filename.find_last_of('.')).c_str());
+				memcpy(this->extension,
+					filename.substr(filename.find_last_of('.')).c_str(),
+					filename.substr(filename.find_last_of('.')).size()
+				);
 		}
 	};
 
