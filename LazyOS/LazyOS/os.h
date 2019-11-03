@@ -35,6 +35,11 @@ public:
 	void read_block_indirect(inode& inode, int block_number, char buf[512]);
 	void write_block_indirect(inode& inode, int block_number, char buf[512]);
 
+	void lock_inode(int inode_number);
+	void unlock_inode(int inode_number);
+
+	void free_inode(int inode_number);
+
 	struct super_block {
 		uint32_t magic;            //является ли LazyOS
 		uint32_t block_size;       //размер блока
@@ -75,6 +80,7 @@ public:
 		char extension[6];
 
 		directory_file() {
+			this->n_inode = 0;
 			char filename[54] = { 0 };
 			char extension[6] = { 0 };
 			memcpy(this->filename, filename,  54);
@@ -86,6 +92,7 @@ public:
 
 			char f[54] = { 0 };
 			char e[6] = { 0 };
+
 			memcpy(this->filename, f, 54);
 			memcpy(this->extension, e, 6);
 

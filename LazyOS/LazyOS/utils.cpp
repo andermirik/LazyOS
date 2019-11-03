@@ -42,6 +42,11 @@ namespace util {
 		mode |= (num & 0x0F)<<12;
 		return mode;
 	}
+	uint16_t read_first_4_bits(uint16_t mode)
+	{
+
+		return (mode & ((0x0F) << 12))>>12;
+	}
 	uint16_t write_rwxrwxrwx(uint16_t mode, uint8_t num)
 	{
 		mode |= (num &0x1FF);

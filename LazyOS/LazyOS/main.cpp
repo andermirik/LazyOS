@@ -19,14 +19,7 @@ std::tuple<string, std::vector<string>> parse_line(string & line) {
 }
 
 int main() {
-	//LazyOS::inode inode = { 0 };
-	//inode.uid = 0xAFBEADDE;
-	//GV::os.write_inode(0, inode);
-	//inode.uid = 0xAFBEADDE;
-	//GV::os.write_inode(1, inode);
-	//GV::os.read_inode(0);
-	//GV::os.get_free_block();
-	//GV::os.load_root();
+
 
 	
 	std::cout << core::fcreate("/some_file1/") << std::endl;
@@ -34,10 +27,22 @@ int main() {
 	std::cout << core::fcreate("/some_file1/dir3/") << std::endl;
 	std::cout << core::fcreate("/some_file1/dir2/file2/") << std::endl;
 	std::cout << core::fcreate("/some_file1/dir3/file2/") << std::endl;
-	std::cout << core::fcreate("/some_file1/dir3/file2/") << std::endl;
+	std::cout << core::fcreate("/some_file1/dir3/file2") << std::endl;
+	std::cout << core::fcreate("/some_file1/dir3/file") << std::endl;
+	std::cout << "open:" << std::endl;
+	std::cout << core::fopen("/some_file1/") << std::endl;
+	std::cout << core::fopen("/some_file1/dir2/") << std::endl;
+	std::cout << core::fopen("/some_file1/dir3/") << std::endl;
+	std::cout << core::fopen("/some_file1/dir2/file2/") << std::endl;
+	std::cout << core::fopen("/some_file1/dir3/file2/") << std::endl;
+	std::cout << core::fopen("/some_file1/dir3/file") << std::endl;
+	std::cout << core::fopen("/some_file1/") << std::endl;
+	std::cout << "delete:" << std::endl;
+	std::cout << core::fdelete("/some_file1/") << std::endl;
+	std::cout << core::fdelete("/some_file1/dir3/file2/")<<std::endl;
+	std::cout << core::fdelete("/some_file1/dir3/file") << std::endl;
+	std::cout << core::fdelete("/some_file1/dir3/file") << std::endl;
 
-	uint16_t mode=0;
-	util::write_first_4_bits(mode, 1);
 	string line;
 	while (true) {
 		std::getline(std::cin, line);

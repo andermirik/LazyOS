@@ -5,7 +5,7 @@
 namespace core {
 	int fcreate(std::string filename);                       //create file
 	int fopen(std::string filename);                         //open file
-	int fdelete(int file);                                    //delete file
+	int fdelete(std::string filename);                                    //delete file
 
 	int fread();                                             //read file
 	int fwrite();                                            //write file

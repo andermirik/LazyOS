@@ -286,3 +286,23 @@ void LazyOS::write_block_indirect(inode & inode, int block_number, char buf[512]
 		bios_write_sector(ind[(block_number) / 144 + (block_number) % 144], buf);
 	}
 }
+
+void LazyOS::lock_inode(int inode_number)
+{
+	set_bit(256 + inode_number, 0x1);
+}
+
+void LazyOS::unlock_inode(int inode_number)
+{
+	set_bit(256 + inode_number, 0x0);
+}
+
+void LazyOS::free_inode(int inode_number)
+{
+	auto inode = read_inode(inode_number);
+	for (int i = 0; i < 15; i++) {
+		inode.blocks[i] = 0;
+		set_bit(inode.blocks[i], 0x0);
+	}
+	write_inode(inode_number, inode);
+}
