@@ -36,12 +36,22 @@ int main() {
 	std::cout << core::fopen("/some_file1/dir2/file2/") << std::endl;
 	std::cout << core::fopen("/some_file1/dir3/file2/") << std::endl;
 	std::cout << core::fopen("/some_file1/dir3/file") << std::endl;
-	std::cout << core::fopen("/some_file1/") << std::endl;
+	std::cout << core::fopen("/some_file1/") << std::endl<<"\n";
 	std::cout << "delete:" << std::endl;
-	std::cout << core::fdelete("/some_file1/") << std::endl;
-	std::cout << core::fdelete("/some_file1/dir3/file2/")<<std::endl;
-	std::cout << core::fdelete("/some_file1/dir3/file") << std::endl;
-	std::cout << core::fdelete("/some_file1/dir3/file") << std::endl;
+	//std::cout << core::fdelete("/some_file1/") << std::endl;
+	//std::cout << core::fdelete("/some_file1/dir3/file2/")<<std::endl;
+	//std::cout << core::fdelete("/some_file1/dir3/file") << std::endl;
+	//std::cout << core::fdelete("/some_file1/dir3/file") << std::endl;
+
+	char zero[256] = { 0 };
+	char buf[256] = {1,2,3,4,5,0};
+	char new_buf[256] = {0};
+
+	
+
+	//std::cout << core::fwrite(core::fopen("/some_file1/dir3/file"), 0, 256, zero);
+	//std::cout << core::fwrite(core::fopen("/some_file1/dir3/file"), 0, 3, buf);
+	//std::cout << core::fread(core::fopen("/some_file1/dir3/file"), 0, 256, new_buf);
 
 	string line;
 	while (true) {

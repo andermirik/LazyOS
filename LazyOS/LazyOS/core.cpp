@@ -132,7 +132,7 @@ int open_file(int inode_number, LazyOS::inode& inode, std::vector<std::string>& 
 		}
 		continue;
 	}
-	return inode_number;
+	return 0;
 }
 int core::fopen(std::string filename)
 {
@@ -263,19 +263,98 @@ int core::fdelete(std::string filename)
 	return 0;
 }
 
-int core::fread()
+int core::fread(int inode_number, int offset, int size, char* to_buf)
 {
-	return 0;
+	if (inode_number <= 0)
+		return -1;
+	LazyOS::inode file_inode = GV::os.read_inode(inode_number);
+	if (offset+size > file_inode.size) {
+		size = file_inode.size-offset;
+	}
+	int bytes_readed = 0;
+	char buf[512];
+
+	int i = offset / 512;
+	if (offset % 512 != 0) {
+		GV::os.read_block_indirect(file_inode, i, buf);
+		size -= 512;
+		if (size < 0) {
+			memcpy(to_buf, buf + offset % 512, size + 512);
+			bytes_readed += 512 + size;
+		}
+		else {
+			memcpy(to_buf, buf + offset % 512, 512);
+			bytes_readed += 512;
+		}
+		i++;
+	}
+
+	for (int j=0; i <= file_inode.size / 512; i++, j++) {
+		GV::os.read_block_indirect(file_inode, i, buf);
+		size -= 512;
+		if (size < 0) {
+			memcpy(to_buf + j * 512, buf, size + 512);
+			bytes_readed += size;
+		}
+		else {
+			bytes_readed += 512;
+			memcpy(to_buf + j * 512, buf, 512);
+		}
+	}
+	GV::os.write_inode(inode_number, file_inode);
+	return bytes_readed;
 }
 
-int core::fwrite()
+int core::fwrite(int inode_number, int offset, int buf_size, char* by_buf)
 {
-	return 0;
+	if (inode_number <= 0)
+		return -1;
+	LazyOS::inode file_inode = GV::os.read_inode(inode_number);
+	if (file_inode.size < offset + buf_size) {
+		file_inode.size = offset + buf_size;
+	}
+	char buf[512];
+	int bytes_writed = 0;
+	int size = buf_size;
+
+	int i = offset / 512;
+	int j = 0;
+	if (offset % 512 != 0) {
+		GV::os.read_block_indirect(file_inode, i, buf);
+		size -= 512;
+		if (size < 0) {
+			memcpy(buf + offset % 512, by_buf, size + 512);
+			bytes_writed += size;
+		}
+		else {
+			memcpy(buf + offset % 512, by_buf, 512);
+			bytes_writed += 512;
+		}
+		GV::os.write_block_indirect(file_inode, i, buf);
+		j++;
+		i++;
+	}
+
+	for (; j <= buf_size / 512; i++, j++) {
+		GV::os.read_block_indirect(file_inode, i, buf);
+		size -= 512;
+		if (size < 0) {
+			memcpy(buf, by_buf + j * 512, size + 512);
+			bytes_writed += -size;
+		}
+		else {
+			memcpy(buf, by_buf+j*512, 512);
+			bytes_writed += 512;
+		}
+		GV::os.write_block_indirect(file_inode, i, buf);
+	}
+	GV::os.write_inode(inode_number, file_inode);
+	return bytes_writed;
 }
 
-int core::fappend()
+int core::fappend(int inode_number, int buf_size, char* buf_append)
 {
-	return 0;
+	return fwrite(inode_number, GV::os.read_inode(inode_number).size, buf_size, buf_append);
 }
 
 int core::fseek()
@@ -283,18 +362,57 @@ int core::fseek()
 	return 0;
 }
 
-int core::fget_attributes()
+int core::fget_attributes(int inode_number)
 {
-	return 0;
+	LazyOS::inode file_inode = GV::os.read_inode(inode_number);
+	return file_inode.mode;
 }
 
-int core::fset_attributes()
+int core::fset_attributes(int inode_number, uint16_t mode)
 {
-	return 0;
+	LazyOS::inode file_inode = GV::os.read_inode(inode_number);
+	file_inode.mode = mode;
+	GV::os.write_inode(inode_number, file_inode);
+	return 1;
 }
 
-int core::frename()
+int rename_file(int inode_number, LazyOS::inode& inode, std::vector<std::string>& dirs, std::string new_filename, int k) {
+	char buf[512];
+
+	for (int i = 0; i < inode.size / 64; i++) {
+		if (i % 8 == 0)
+			GV::os.read_block_indirect(inode, i / 8, buf);
+		LazyOS::directory_file file;
+		memcpy(&file, buf + i * sizeof(LazyOS::directory_file), sizeof(LazyOS::directory_file));
+		if (dirs[k] == file_to_filename(file)) {
+			if (k == dirs.size() - 2) {
+				LazyOS::directory_file new_file(file.n_inode, new_filename);
+				memcpy(buf + i * sizeof(LazyOS::directory_file), &new_file, sizeof(LazyOS::directory_file));
+				GV::os.write_block_indirect(inode, i / 8, buf);
+				return 1;
+			}
+			LazyOS::inode temp = GV::os.read_inode(file.n_inode);
+			return rename_file(file.n_inode, temp, dirs, new_filename, k + 1);
+		}
+		continue;
+	}
+	return -1;
+}
+
+int core::frename(std::string filename, std::string new_filename)
 {
+	auto now = std::chrono::system_clock::now();
+	auto dirs = util::split(filename, '/');
+
+	LazyOS::inode root = GV::os.read_inode(GV::os.superblock.root_inode);
+
+	if (dirs[dirs.size() - 1] != "" && dirs.size() > 1) {  //file
+		dirs.push_back("");
+		return rename_file(0, root, dirs, new_filename, 1);
+	}
+	else if (dirs[dirs.size() - 1] == "" && dirs.size() > 2) { //dir
+		return rename_file(0, root, dirs, new_filename, 1);
+	}
 	return 0;
 }
 
