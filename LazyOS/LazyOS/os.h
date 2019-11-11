@@ -2,14 +2,44 @@
 #define MB 1024*1024
 using byte = unsigned char;
 #include <fstream>
+#include <vector>
 
 class LazyOS {
+public:
 	struct inode;
 	struct super_block;
 	struct directory_file;
+	struct user;
 private:
 	std::fstream file;
 public:
+
+	struct user {
+		uint32_t uid;
+		char login[32];
+		char pswd[28];
+		user() {
+			uid = 0;
+			char login[32] = { 0 };
+			char pswd[28] = { 0 };
+			memcpy(this->login, login, 32);
+			memcpy(this->pswd, pswd, 328);
+		};
+		user(uint32_t uid, std::string login, std::string pswd) {
+			strcpy_s(this->login, login.c_str());
+			strcpy_s(this->pswd, pswd.c_str());
+			this->uid = uid;
+		};
+	};
+	user current_user;
+	std::vector<std::pair<uint32_t, std::string>> user_get();
+
+	int user_login(std::string login, std::string pswd);
+	int user_add(std::string login, std::string pswd);
+	int user_rmv(std::string login);
+	int user_rnm(std::string login, std::string new_login);
+
+
 	LazyOS();
 	~LazyOS();
 	int resize(int size, int size_claster);
@@ -38,7 +68,8 @@ public:
 	void lock_inode(int inode_number);
 	void unlock_inode(int inode_number);
 
-	void free_inode(int inode_number);
+	void free_inode_blocks(int inode_number);
+
 
 	struct super_block {
 		uint32_t magic;            //является ли LazyOS

@@ -9,4 +9,6 @@ namespace util {
 	uint16_t write_first_4_bits(uint16_t mode, uint8_t num);
 	uint16_t read_first_4_bits(uint16_t mode);
 	uint16_t write_rwxrwxrwx(uint16_t mode, uint8_t num);
+
+	std::string read_pswd();
 }

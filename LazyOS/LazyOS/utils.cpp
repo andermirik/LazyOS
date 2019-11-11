@@ -1,5 +1,6 @@
 #include "utils.h"
 #include <sstream>
+#include "conio.h"
 namespace util {
 	std::string join(std::vector<std::string> v, std::string separator) {
 		std::stringstream ss;
@@ -51,5 +52,31 @@ namespace util {
 	{
 		mode |= (num &0x1FF);
 		return mode;
+	}
+	std::string read_pswd()
+	{
+		std::string pswd;
+		char key;
+		do {
+			key = _getch();
+			if (key == 8) {
+				if (pswd.size() != 0) {
+					pswd.pop_back();
+					_putch('\b');
+					_putch(' ');
+					_putch('\b');
+				}
+			}
+			else if (key == 13) {
+				_putch('\n');
+			}
+			else {
+				if (pswd.size() != 29) {
+					pswd.push_back(key);
+					_putch('*');
+				}
+			}
+		} while (key != 13);
+		return pswd;
 	}
 }

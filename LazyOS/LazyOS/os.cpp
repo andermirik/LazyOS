@@ -5,6 +5,98 @@
 using std::string;
 
 
+std::vector<std::pair<uint32_t, std::string>> LazyOS::user_get()
+{
+	std::vector<std::pair<uint32_t, std::string>> users;
+
+	int inode_number = core::fopen("/users");
+	int size = core::fsize(inode_number);
+
+	user temp_user;
+	for (int i = 0; i < size / 64; i++) {
+		core::fread(inode_number, i * 64, 64, (char*)&temp_user);
+		if(std::string(temp_user.login)!="")
+			users.push_back({ temp_user.uid, temp_user.login });
+	}
+
+	return users;
+}
+
+int LazyOS::user_login(std::string login, std::string pswd)
+{
+	int inode_number = core::fopen("/users");
+	int size = core::fsize(inode_number);
+
+	for (int i = 0; i < size / 64; i++) {
+		user temp_user;
+		core::fread(inode_number, i * 64, 64, (char*)&temp_user);
+		if (std::string(temp_user.login) == login && std::string(temp_user.pswd) == pswd) {
+			return temp_user.uid;
+		}
+	}
+
+	return -1;
+}
+
+int LazyOS::user_add(std::string login, std::string pswd)
+{
+	int inode_number = core::fopen("/users");
+	int size = core::fsize(inode_number);
+	
+	for (int i = 0; i < size / 64; i++) {
+		user temp_user;
+		core::fread(inode_number, i*64, 64, (char*)&temp_user);
+		if (strcmp(temp_user.login, "") == 0) {
+			user write_user(i, login, pswd);
+
+			core::fwrite(inode_number, i * 64, 64, (char*)&write_user);
+			return write_user.uid;
+		}
+	}
+	user write_user(size / 64, login, pswd);
+	size = core::fsize(inode_number);
+	core::fappend(inode_number, 64, (char*)&write_user);
+	size = core::fsize(inode_number);
+	return write_user.uid;
+}
+
+int LazyOS::user_rmv(std::string login)
+{
+	int inode_number = core::fopen("/users");
+	int size = core::fsize(inode_number);
+
+	for (int i = 0; i < size / 64; i++) {
+		user temp_user;
+		core::fread(inode_number, i * 64, 64, (char*)&temp_user);
+		if (std::string(temp_user.login) == login) {
+			strcpy_s(temp_user.login, "");
+			core::fwrite(inode_number, i * 64, 64, (char*)&temp_user);
+			return temp_user.uid;
+		}
+	}
+
+	return -1;
+}
+
+int LazyOS::user_rnm(std::string login, std::string new_login)
+{
+	int inode_number = core::fopen("/users");
+	int size = core::fsize(inode_number);
+
+	for (int i = 0; i < size / 64; i++) {
+		user temp_user;
+		core::fread(inode_number, i * 64, 64, (char*)&temp_user);
+		if (strcmp(temp_user.login, login.c_str()) == 0) {
+			strcpy_s(temp_user.login, new_login.c_str());
+			core::fwrite(inode_number, i * 64, 64, (char*)&temp_user);
+			return temp_user.uid;
+		}
+	}
+
+	return -1;
+}
+
+
 LazyOS::LazyOS()
 {
 	file.open("lazy.dat", std::ios::in | std::ios::out | std::ios::binary);
@@ -40,6 +132,19 @@ int LazyOS::resize(int size, int size_claster)
 		set_bit(i, 0x1);
 	}
 	core::fcreate("/");
+
+	core::fcreate("/homes/");
+	core::fcreate("/users");
+	char buf[256];
+
+	user_add("root", "12345");
+	user_add("andermirik", "hello world!");
+	//user_add("salo", "abyssal");
+	//user_rmv("salo");
+	core::fread(core::fopen("/users"), 0, 256, buf);
+	user_add("dim14k", "qwerty");
+	
+	core::fread(core::fopen("/users"), 0, 256, buf);
 
 	return size / size_claster/8;
 	return -1;
@@ -297,12 +402,13 @@ void LazyOS::unlock_inode(int inode_number)
 	set_bit(256 + inode_number, 0x0);
 }
 
-void LazyOS::free_inode(int inode_number)
+void LazyOS::free_inode_blocks(int inode_number)
 {
 	auto inode = read_inode(inode_number);
-	for (int i = 0; i < 15; i++) {
+	for (int i = 0; i < 12; i++) {
 		inode.blocks[i] = 0;
 		set_bit(inode.blocks[i], 0x0);
 	}
+	//?
 	write_inode(inode_number, inode);
 }

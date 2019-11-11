@@ -11,7 +11,7 @@ namespace core {
 	int fwrite(int inode_number, int offset, int size, char*by_buf);    //write file
 	int fappend(int inode_number, int buf_size, char* buf_append);      //append file
 
-	int fseek();                                             //set position on file
+	uint64_t fsize(int inode_number);                                            
 	
 	int fget_attributes(int inode_number);
 	int fset_attributes(int inode_number, uint16_t mode);

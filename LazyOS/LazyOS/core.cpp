@@ -156,7 +156,7 @@ int recursive_clear(int inode_number, LazyOS::inode& inode) {
 	if (util::read_first_4_bits(inode.mode) == 0xF
 		|| util::read_first_4_bits(inode.mode) == 0x5F) {
 		GV::os.unlock_inode(inode_number);
-		GV::os.free_inode(inode_number);
+		GV::os.free_inode_blocks(inode_number);
 		return 0;
 	}
 	char buf[512];
@@ -171,7 +171,7 @@ int recursive_clear(int inode_number, LazyOS::inode& inode) {
 			recursive_clear(file.n_inode, temp);
 		}
 	}
-	GV::os.free_inode(inode_number);
+	GV::os.free_inode_blocks(inode_number);
 	GV::os.unlock_inode(inode_number);
 	return 1;
 }
@@ -294,7 +294,7 @@ int core::fread(int inode_number, int offset, int size, char* to_buf)
 		size -= 512;
 		if (size < 0) {
 			memcpy(to_buf + j * 512, buf, size + 512);
-			bytes_readed += size;
+			bytes_readed += size+512;
 		}
 		else {
 			bytes_readed += 512;
@@ -324,7 +324,7 @@ int core::fwrite(int inode_number, int offset, int buf_size, char* by_buf)
 		size -= 512;
 		if (size < 0) {
 			memcpy(buf + offset % 512, by_buf, size + 512);
-			bytes_writed += size;
+			bytes_writed += size + 512;
 		}
 		else {
 			memcpy(buf + offset % 512, by_buf, 512);
@@ -340,7 +340,7 @@ int core::fwrite(int inode_number, int offset, int buf_size, char* by_buf)
 		size -= 512;
 		if (size < 0) {
 			memcpy(buf, by_buf + j * 512, size + 512);
-			bytes_writed += -size;
+			bytes_writed += size + 512;
 		}
 		else {
 			memcpy(buf, by_buf+j*512, 512);
@@ -357,10 +357,12 @@ int core::fappend(int inode_number, int buf_size, char* buf_append)
 	return fwrite(inode_number, GV::os.read_inode(inode_number).size, buf_size, buf_append);
 }
 
-int core::fseek()
+uint64_t core::fsize(int inode_number)
 {
-	return 0;
+	LazyOS::inode file_inode = GV::os.read_inode(inode_number);
+	return file_inode.size;
 }
+
 
 int core::fget_attributes(int inode_number)
 {
