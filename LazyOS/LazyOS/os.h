@@ -14,21 +14,47 @@ private:
 	std::fstream file;
 public:
 
+	struct group {
+		uint32_t gid;
+		uint32_t oid;//owner id
+		char name[28];
+		char pswd[28];
+		group() {
+			gid = 0;
+			oid = 0;
+			char name[24] = { 0 };
+			char pswd[28] = { 0 };
+			memcpy(this->name, name, 28);
+			memcpy(this->pswd, pswd, 28);
+
+		};
+		group(uint32_t gid, uint32_t oid, std::string name, std::string pswd) {
+			strcpy_s(this->name, name.c_str());
+			strcpy_s(this->pswd, pswd.c_str());
+
+			this->gid = gid;
+			this->oid = oid;
+		}
+	};
+
 	struct user {
 		uint32_t uid;
-		char login[32];
+		uint32_t gid;
+		char login[28];
 		char pswd[28];
 		user() {
 			uid = 0;
-			char login[32] = { 0 };
+			gid = 0;
+			char login[28] = { 0 };
 			char pswd[28] = { 0 };
-			memcpy(this->login, login, 32);
-			memcpy(this->pswd, pswd, 328);
+			memcpy(this->login, login, 28);
+			memcpy(this->pswd, pswd, 28);
 		};
 		user(uint32_t uid, std::string login, std::string pswd) {
 			strcpy_s(this->login, login.c_str());
 			strcpy_s(this->pswd, pswd.c_str());
 			this->uid = uid;
+			this->gid = 0;
 		};
 	};
 	user current_user;
@@ -36,8 +62,14 @@ public:
 
 	int user_login(std::string login, std::string pswd);
 	int user_add(std::string login, std::string pswd);
-	int user_rmv(std::string login);
+	int user_del(std::string login);
 	int user_rnm(std::string login, std::string new_login);
+
+	std::vector<std::tuple<uint32_t, uint32_t, std::string>> group_get();
+
+	int group_add(std::string name, std::string pswd);
+	int group_del(std::string name, std::string pswd);
+	int group_join(std::string name, std::string pswd);
 
 
 	LazyOS();

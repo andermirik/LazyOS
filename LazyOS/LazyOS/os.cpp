@@ -2,6 +2,7 @@
 #include "utils.h"
 #include <fstream>
 #include "core.h"
+#include <tuple>
 using std::string;
 
 
@@ -54,14 +55,14 @@ int LazyOS::user_add(std::string login, std::string pswd)
 		}
 	}
 	user write_user(size / 64, login, pswd);
-	size = core::fsize(inode_number);
 	core::fappend(inode_number, 64, (char*)&write_user);
-	size = core::fsize(inode_number);
 	return write_user.uid;
 }
 
-int LazyOS::user_rmv(std::string login)
+int LazyOS::user_del(std::string login)
 {
+	if (login == "ghost")
+		return -1;
 	int inode_number = core::fopen("/users");
 	int size = core::fsize(inode_number);
 
@@ -80,6 +81,8 @@ int LazyOS::user_rmv(std::string login)
 
 int LazyOS::user_rnm(std::string login, std::string new_login)
 {
+	if (login == "ghost")
+		return -1;
 	int inode_number = core::fopen("/users");
 	int size = core::fsize(inode_number);
 
@@ -93,6 +96,70 @@ int LazyOS::user_rnm(std::string login, std::string new_login)
 		}
 	}
 
+	return -1;
+}
+
+std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::group_get()
+{
+	std::vector<std::tuple<uint32_t, uint32_t, std::string>> users;
+
+	int inode_number = core::fopen("/groups");
+	int size = core::fsize(inode_number);
+
+	group temp_group;
+	for (int i = 0; i < size / 64; i++) {
+		core::fread(inode_number, i * 64, 64, (char*)&temp_group);
+		if (std::string(temp_group.name) != "")
+			users.push_back(std::make_tuple(temp_group.gid, temp_group.oid, temp_group.name));
+	}
+
+	return users;
+}
+
+int LazyOS::group_add(std::string name, std::string pswd)
+{
+	if (current_user.gid == 0 && name != "default") {
+
+		int inode_number = core::fopen("/groups");
+		int size = core::fsize(inode_number);
+
+		for (int i = 0; i < size / 64; i++) {
+			group temp_group;
+			core::fread(inode_number, i * 64, 64, (char*)&temp_group);
+			if (strcmp(temp_group.name, "") == 0) {
+				group write_group(i, current_user.uid, name, pswd);
+				core::fwrite(inode_number, i * 64, 64, (char*)&write_group);
+				current_user.gid = write_group.gid;
+				return write_group.gid;
+			}
+		}
+		group write_group(size / 64, current_user.uid, name, pswd);
+		core::fappend(inode_number, 64, (char*)&write_group);
+		current_user.gid = write_group.gid;
+		return write_group.gid;
+	}
+	else {
+		return -1;
+	}
+}
+
+int LazyOS::group_del(std::string name, std::string pswd)
+{
+	
+	int inode_number = core::fopen("/groups");
+	int size = core::fsize(inode_number);
+
+	for (int i = 0; i < size / 64; i++) {
+		group temp_group;
+		core::fread(inode_number, i * 64, 64, (char*)&temp_group);
+		if (std::string(temp_group.name) == name && std::string(temp_group.pswd) == pswd) {
+			if (temp_group.gid != 0) {
+				strcpy_s(temp_group.name, "");
+				core::fwrite(inode_number, i * 64, 64, (char*)&temp_group);
+				return temp_group.gid;
+			}
+		}
+	}
 	return -1;
 }
 
@@ -131,21 +198,22 @@ int LazyOS::resize(int size, int size_claster)
 	for (i = 0; i < 256 +1; i++) { //+1 инод рута
 		set_bit(i, 0x1);
 	}
+
+
+	current_user = user(0, "root", "12345");
 	core::fcreate("/");
 
 	core::fcreate("/homes/");
 	core::fcreate("/users");
-	char buf[256];
+	core::fcreate("/groups");
 
 	user_add("root", "12345");
+	user_add("ghost", "");
 	user_add("andermirik", "hello world!");
-	//user_add("salo", "abyssal");
-	//user_rmv("salo");
-	core::fread(core::fopen("/users"), 0, 256, buf);
 	user_add("dim14k", "qwerty");
-	
-	core::fread(core::fopen("/users"), 0, 256, buf);
 
+	current_user = user(user_login("ghost", ""), "ghost", "");
+	group_add("default", "");
 	return size / size_claster/8;
 	return -1;
 }

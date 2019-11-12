@@ -71,7 +71,7 @@ namespace util {
 				_putch('\n');
 			}
 			else {
-				if (pswd.size() != 29) {
+				if (pswd.size() != 27) {
 					pswd.push_back(key);
 					_putch('*');
 				}
