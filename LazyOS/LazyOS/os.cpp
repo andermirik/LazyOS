@@ -6,9 +6,9 @@
 using std::string;
 
 
-std::vector<std::pair<uint32_t, std::string>> LazyOS::user_get()
+std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::user_get()
 {
-	std::vector<std::pair<uint32_t, std::string>> users;
+	std::vector<std::tuple<uint32_t, uint32_t, std::string>> users;
 
 	int inode_number = core::fopen("/users");
 	int size = core::fsize(inode_number);
@@ -17,7 +17,7 @@ std::vector<std::pair<uint32_t, std::string>> LazyOS::user_get()
 	for (int i = 0; i < size / 64; i++) {
 		core::fread(inode_number, i * 64, 64, (char*)&temp_user);
 		if(std::string(temp_user.login)!="")
-			users.push_back({ temp_user.uid, temp_user.login });
+			users.push_back(std::make_tuple(temp_user.uid, temp_user.gid, temp_user.login));
 	}
 
 	return users;
@@ -99,6 +99,20 @@ int LazyOS::user_rnm(std::string login, std::string new_login)
 	return -1;
 }
 
+LazyOS::user LazyOS::user_read(int user_number)
+{
+	user ret;
+	int inode_number = core::fopen("/users");
+	core::fread(inode_number, user_number * 64, 64, (char*)&ret);
+	return ret;
+}
+
+void LazyOS::user_write(int user_number, user& u)
+{
+	int inode_number = core::fopen("/users");
+	core::fwrite(inode_number, user_number * 64, 64, (char*)&u);
+}
+
 std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::group_get()
 {
 	std::vector<std::tuple<uint32_t, uint32_t, std::string>> users;
@@ -118,7 +132,7 @@ std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::group_get()
 
 int LazyOS::group_add(std::string name, std::string pswd)
 {
-	if (current_user.gid == 0 && name != "default") {
+	if (current_user.gid == 0) {
 
 		int inode_number = core::fopen("/groups");
 		int size = core::fsize(inode_number);
@@ -130,6 +144,8 @@ int LazyOS::group_add(std::string name, std::string pswd)
 				group write_group(i, current_user.uid, name, pswd);
 				core::fwrite(inode_number, i * 64, 64, (char*)&write_group);
 				current_user.gid = write_group.gid;
+				user_read(current_user.uid);
+				user_write(current_user.uid, current_user);
 				return write_group.gid;
 			}
 		}
@@ -202,6 +218,7 @@ int LazyOS::resize(int size, int size_claster)
 
 	current_user = user(0, "root", "12345");
 	core::fcreate("/");
+	GV::os.dirs = util::split("/", '/');
 
 	core::fcreate("/homes/");
 	core::fcreate("/users");

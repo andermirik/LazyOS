@@ -3,3 +3,6 @@
 ################################################################################
 
 /LazyOS/.vs/LazyOS/v16
+/.vs
+/LazyOS/LazyOS/x64/Debug
+/LazyOS/LazyOS/lazy.dat

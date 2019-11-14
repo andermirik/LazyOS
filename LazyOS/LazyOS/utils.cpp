@@ -1,6 +1,8 @@
 #include "utils.h"
 #include <sstream>
 #include "conio.h"
+#include "os.h"
+
 namespace util {
 	std::string join(std::vector<std::string> v, std::string separator) {
 		std::stringstream ss;
@@ -38,6 +40,21 @@ namespace util {
 		return str;
 	}
 
+	std::string file_to_filename(LazyOS::directory_file& file) {
+		std::string tmp;
+		tmp.append(file.filename);
+		if (strlen(file.extension) != 0) {
+			tmp.append(".");
+			tmp.append(file.extension);
+		}
+		return tmp;
+	}
+
+	void set_text_color(colors color)
+	{
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+	}
+
 	uint16_t write_first_4_bits(uint16_t mode, uint8_t num)
 	{
 		mode |= (num & 0x0F)<<12;
@@ -48,9 +65,16 @@ namespace util {
 
 		return (mode & ((0x0F) << 12))>>12;
 	}
-	uint16_t write_rwxrwxrwx(uint16_t mode, uint8_t num)
+
+	uint16_t write_rwxrwxrwx(uint16_t mode, uint16_t num)
 	{
 		mode |= (num &0x1FF);
+		return mode;
+	}
+
+	uint16_t read_rwxrwxrwx(uint16_t mode)
+	{
+		mode &= (mode & 0x1FF);
 		return mode;
 	}
 	std::string read_pswd()

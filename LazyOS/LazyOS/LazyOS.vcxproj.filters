@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Исходные файлы\commands">
+      <UniqueIdentifier>{f9ff73c6-578b-425a-ab61-b3600e38c926}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -29,6 +32,18 @@
     </ClCompile>
     <ClCompile Include="globals.cpp">
       <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="commands\default.cpp">
+      <Filter>Исходные файлы\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="commands\users.cpp">
+      <Filter>Исходные файлы\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="commands\groups.cpp">
+      <Filter>Исходные файлы\commands</Filter>
+    </ClCompile>
+    <ClCompile Include="commands\filesystem.cpp">
+      <Filter>Исходные файлы\commands</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

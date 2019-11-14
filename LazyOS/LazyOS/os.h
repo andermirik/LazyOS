@@ -13,6 +13,8 @@ public:
 private:
 	std::fstream file;
 public:
+	
+	std::vector<std::string> dirs;
 
 	struct group {
 		uint32_t gid;
@@ -22,7 +24,7 @@ public:
 		group() {
 			gid = 0;
 			oid = 0;
-			char name[24] = { 0 };
+			char name[28] = { 0 };
 			char pswd[28] = { 0 };
 			memcpy(this->name, name, 28);
 			memcpy(this->pswd, pswd, 28);
@@ -58,19 +60,22 @@ public:
 		};
 	};
 	user current_user;
-	std::vector<std::pair<uint32_t, std::string>> user_get();
+	std::vector<std::tuple<uint32_t, uint32_t, std::string>> user_get();
 
 	int user_login(std::string login, std::string pswd);
 	int user_add(std::string login, std::string pswd);
 	int user_del(std::string login);
 	int user_rnm(std::string login, std::string new_login);
 
+	user user_read(int user_number);
+	void user_write(int user_number, user& u);
+
 	std::vector<std::tuple<uint32_t, uint32_t, std::string>> group_get();
 
 	int group_add(std::string name, std::string pswd);
 	int group_del(std::string name, std::string pswd);
 	int group_join(std::string name, std::string pswd);
-
+	
 
 	LazyOS();
 	~LazyOS();
