@@ -250,6 +250,12 @@ int LazyOS::resize(int size, int size_claster)
 	core::fcreate("/homes/");
 	core::fcreate("/users");
 	core::fcreate("/groups");
+	
+	core::fcreate("/dir1/");
+	core::fcreate("/dir1/dir2/");
+	core::fcreate("/dir1/file");
+
+
 
 	user_add("root", "12345");
 	user_add("ghost", "");

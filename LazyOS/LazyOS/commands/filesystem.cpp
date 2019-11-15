@@ -3,10 +3,20 @@
 #include "../utils.h"
 #include <iostream>
 #include <bitset>
+#include <chrono>
+#include <sstream>
+#include <iomanip>
 using std::string;
 using std::cout;
 using std::cin;
 using std::endl;
+
+
+
+std::string long_to_time(uint64_t ltime) {
+	time_t ttime = (time_t)ltime/1000;
+	return std::string(ctime(&ttime));
+}
 
 void set_filesystem_commands() {
 	GV::cmds["dir"] = [](std::vector<std::string> args) {
@@ -32,15 +42,18 @@ void set_filesystem_commands() {
 
 			if (type == 0x5D || type == 0xD) {
 				util::set_text_color(colors::Yellow);
-				cout << util::file_to_filename(file) << "/";
+				cout << std::setw(10) << std::left 
+					<< util::file_to_filename(file) + "/";
 				util::set_text_color(colors::White);
 			}
 			else {
-				cout << util::file_to_filename(file);
+				cout << std::setw(10) << std::left 
+					<< util::file_to_filename(file);
 			}
 
 			cout << " ";
 
+			
 			std::bitset<9> rwx(rules);
 			for (int i = 0; i < 9; i++) {
 				if (rwx[i] == 1) {
@@ -55,7 +68,13 @@ void set_filesystem_commands() {
 					cout << "-";
 				}
 			}
-			cout << " uid: " << inode.uid << endl;
+
+			cout << " uid: " << inode.uid << "\t";
+			cout << " gid: " << inode.gid << "\t";
+			cout << " size: " << inode.size << "\t";
+			cout << " time: " << util::replace_all(long_to_time(inode.date_modification), "\n", "") << "\t";
+
+			cout << " iid: " << file.n_inode << endl;
 		}
 		
 	};
@@ -100,11 +119,23 @@ void set_filesystem_commands() {
 			}
 		}
 	};
-	GV::cmds["rn"] = [](std::vector < std::string> args) {
+	GV::cmds["mv"] = [](std::vector < std::string> args) {
 		if (args.size() > 1) {
 			string path = GV::os.relative_to_full_path(args[0]);
-			if (core::frename(path, args[1]) == 0) {
-				cout << "не удалось переименовать файл " << path << endl;
+			string path2 = GV::os.relative_to_full_path(args[1]);
+			if (path == path2) {
+				if (core::frename(path, args[1]) == 0) {
+					cout << "не удалось переименовать файл " << path << endl;
+				}
+			}
+			else {
+				int file_inode = core::fopen(path);
+				int size = core::fsize(file_inode);
+				char* buf = new char[size];
+				core::fread(file_inode, 0, size, buf);
+				int new_file_inode = core::fcreate(path2);
+				core::fwrite(new_file_inode, 0, size, buf);
+				core::fdelete(path);
 			}
 		}
 	};
