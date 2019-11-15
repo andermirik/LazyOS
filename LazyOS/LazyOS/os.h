@@ -16,6 +16,8 @@ public:
 	
 	std::vector<std::string> dirs;
 
+	std::string relative_to_full_path(std::string path);
+
 	struct group {
 		uint32_t gid;
 		uint32_t oid;//owner id

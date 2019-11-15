@@ -64,7 +64,7 @@ void set_filesystem_commands() {
 			if (args[0] == "") {
 				return;
 			}
-			if (args[0][0] == '/') {
+			/*if (args[0][0] == '/') {
 				if (core::fopen(args[0]) != 0 && args[0] != "/") {
 					GV::os.dirs = util::split(args[0], '/');
 				}
@@ -105,6 +105,10 @@ void set_filesystem_commands() {
 					cout << "не удалось открыть файл " << util::join(temp_dirs, "/") << args[0] << endl;
 				}
 				
+			}*/
+			string path = GV::os.relative_to_full_path(args[0]);
+			if (core::fopen(path) || path == "/") {
+				GV::os.dirs = util::split(path, '/');
 			}
 		}
 	};

@@ -6,6 +6,33 @@
 using std::string;
 
 
+std::string LazyOS::relative_to_full_path(std::string path)
+{
+	if (path[0] == '/') {
+		return path;
+	}
+	else if (path[0] == '~') {
+		return util::replace_all(path, "~", "/homes/" + std::string(GV::os.current_user.login));
+	}
+	else {
+		auto temp_dirs = GV::os.dirs;
+		auto dirs = util::split(path, '/');
+		temp_dirs.pop_back();
+		for (auto& dir : dirs) {
+			if (dir == "..") {
+				if (temp_dirs.size() > 1) {
+					temp_dirs.pop_back();
+				}
+			}
+			else {
+				temp_dirs.push_back(dir);
+			}
+		}
+		
+		return util::join(temp_dirs, "/");
+	}
+}
+
 std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::user_get()
 {
 	std::vector<std::tuple<uint32_t, uint32_t, std::string>> users;
