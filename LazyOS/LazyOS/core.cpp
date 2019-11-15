@@ -61,7 +61,7 @@ int core::fcreate(std::string filename)
 	auto dirs = util::split(filename, '/');
 	if (dirs[0] == "" && dirs[1] == "" && dirs.size() == 2) { //root
 		LazyOS::inode inode = {0};//20000
-		inode.mode = 0x5D;
+		inode.mode = util::write_first_4_bits(inode.mode, 0x5D);
 		inode.date_creation = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 		inode.date_modification = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 		inode.size = 0;//8192

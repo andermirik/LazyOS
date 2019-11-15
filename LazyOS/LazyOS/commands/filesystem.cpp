@@ -64,72 +64,47 @@ void set_filesystem_commands() {
 			if (args[0] == "") {
 				return;
 			}
-			/*if (args[0][0] == '/') {
-				if (core::fopen(args[0]) != 0 && args[0] != "/") {
-					GV::os.dirs = util::split(args[0], '/');
-				}
-				else if (args[0] == "/") {
-					GV::os.dirs = util::split(args[0], '/');
-				}
-				else {
-					cout << "не удалось открыть файл " << args[0] << endl;
-				}
-			}
-			else if (args[0][0] == '~') {
-				args[0] = util::replace_all(args[0], "~", "/homes/" + std::string(GV::os.current_user.login));
-				if (core::fopen(args[0]) != 0) {
-					GV::os.dirs = util::split(args[0], '/');
-				}
-				else {
-					cout << "не удалось открыть файл " << args[0] << endl;
+			
+			string path = GV::os.relative_to_full_path(args[0]);
+
+			int file_inode = core::fopen(path);
+			int file_type = util::read_first_4_bits(core::fget_attributes(file_inode));
+			bool is_dir = file_type == 0xD || file_type == 0x5D;
+			
+			if ((file_inode || path == "/") && is_dir == true) {
+				GV::os.dirs = util::split(path, '/');
+				if (file_inode != 0) {
+					if (path[path.size()-1] != '/') {
+						GV::os.dirs.push_back("");
+					}
 				}
 			}
 			else {
-				auto temp_dirs = GV::os.dirs;
-				auto dirs = util::split(args[0], '/');
-				temp_dirs.pop_back();
-				for (auto& dir : dirs) {
-					if (dir == "..") {
-						if (temp_dirs.size() > 1) {
-							temp_dirs.pop_back();
-						}
-					}
-					else {
-						temp_dirs.push_back(dir);
-					}
-				}
-				if (core::fopen(util::join(temp_dirs, "/")) || temp_dirs.size() == 2) {
-					GV::os.dirs = temp_dirs;
-				}
-				else {
-					cout << "не удалось открыть файл " << util::join(temp_dirs, "/") << args[0] << endl;
-				}
-				
-			}*/
-			string path = GV::os.relative_to_full_path(args[0]);
-			if (core::fopen(path) || path == "/") {
-				GV::os.dirs = util::split(path, '/');
+				cout << "не удалось открыть файл " << path << endl;
 			}
 		}
 	};
 	GV::cmds["mk"] = [](std::vector<std::string> args) {
 		if (!args.empty()) {
-			if (core::fcreate(args[0]) == 0) {
-				cout << "не удалось создать файл " << args[0] << endl;
+			string path = GV::os.relative_to_full_path(args[0]);
+			if (core::fcreate(path) == 0) {
+				cout << "не удалось создать файл " << path << endl;
 			}
 		}
 	};
 	GV::cmds["rm"] = [](std::vector<std::string> args) {
 		if (!args.empty()) {
-			if (core::fdelete(args[0]) == 0) {
-				cout << "не удалось удалить файл " << args[0] << endl;
+			string path = GV::os.relative_to_full_path(args[0]);
+			if (core::fdelete(path) == 0) {
+				cout << "не удалось удалить файл " << path << endl;
 			}
 		}
 	};
 	GV::cmds["rn"] = [](std::vector < std::string> args) {
 		if (args.size() > 1) {
-			if (core::frename(args[0], args[1]) == 0) {
-				cout << "не удалось переименовать файл " << args[0] << endl;
+			string path = GV::os.relative_to_full_path(args[0]);
+			if (core::frename(path, args[1]) == 0) {
+				cout << "не удалось переименовать файл " << path << endl;
 			}
 		}
 	};

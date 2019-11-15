@@ -14,11 +14,11 @@ using std::cin;
 using std::endl;
 
 std::tuple<string, std::vector<string>> parse_line(string & line) {
-	
+
 	string command = line.substr(0, line.find(' '));
 	std::vector<string> args;
 	if (command.size() != line.size())
-		 args = util::split(line.substr(command.size() + 1), ' ');
+		args = util::split(line.substr(command.size() + 1), ' ');
 
 	return std::make_tuple(command, args);
 }
@@ -28,9 +28,16 @@ int main() {
 	SetConsoleOutputCP(1251);
 	setlocale(0, "rus");
 
+	util::set_text_color(colors::White);
+
 	set_commands();
 
-	GV::os.current_user = LazyOS::user(GV::os.user_login("ghost", ""), "ghost", "");
+	GV::cmds["users"]({ "login" });
+
+	if (std::string(GV::os.current_user.login) == ""){
+		system("pause");
+		return 0;
+	}
 	GV::os.dirs = util::split("/", '/');
 
 	string line;
@@ -38,6 +45,7 @@ int main() {
 		cout << util::join(GV::os.dirs, "/");
 		cout << "$ ";
 		std::getline(std::cin, line);
+
 
 		auto[command, args] = parse_line(line);
 		
