@@ -170,15 +170,21 @@ int LazyOS::group_add(std::string name, std::string pswd)
 			if (strcmp(temp_group.name, "") == 0) {
 				group write_group(i, current_user.uid, name, pswd);
 				core::fwrite(inode_number, i * 64, 64, (char*)&write_group);
-				current_user.gid = write_group.gid;
+
 				user_read(current_user.uid);
+				current_user.gid = write_group.gid;
 				user_write(current_user.uid, current_user);
+
 				return write_group.gid;
 			}
 		}
 		group write_group(size / 64, current_user.uid, name, pswd);
 		core::fappend(inode_number, 64, (char*)&write_group);
+
+		user_read(current_user.uid);
 		current_user.gid = write_group.gid;
+		user_write(current_user.uid, current_user);
+
 		return write_group.gid;
 	}
 	else {
