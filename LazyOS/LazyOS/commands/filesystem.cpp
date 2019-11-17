@@ -123,20 +123,37 @@ void set_filesystem_commands() {
 		if (args.size() > 1) {
 			string path = GV::os.relative_to_full_path(args[0]);
 			string path2 = GV::os.relative_to_full_path(args[1]);
-			if (path == path2) {
+			/*if (path == path2) {
 				if (core::frename(path, args[1]) == 0) {
 					cout << "не удалось переименовать файл " << path << endl;
 				}
 			}
-			else {
+			else {*/
 				int file_inode = core::fopen(path);
-				int size = core::fsize(file_inode);
-				char* buf = new char[size];
-				core::fread(file_inode, 0, size, buf);
-				int new_file_inode = core::fcreate(path2);
-				core::fwrite(new_file_inode, 0, size, buf);
-				core::fdelete(path);
-			}
+				if (path != "/" && file_inode) {
+					int size = core::fsize(file_inode);
+
+					char* buf;
+					buf = new char[1];//чтоб не было ошибки
+					if (size != 0) {
+						buf = new char[size];
+						core::fread(file_inode, 0, size, buf);
+					}
+					int new_file_inode = core::fcreate(path2);
+					if (new_file_inode && path2 != "/") {
+						if (size != 0) {
+							core::fwrite(new_file_inode, 0, size, buf);
+						}
+					}
+					else {
+						cout << "не удалось содать файл " << path2 << endl;
+					}
+					core::fdelete(path);
+				}
+				else {
+					cout << "не удалось создать файл " << path << endl;
+				}
+			//}
 		}
 	};
 }
