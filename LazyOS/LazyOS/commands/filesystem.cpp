@@ -123,37 +123,95 @@ void set_filesystem_commands() {
 		if (args.size() > 1) {
 			string path = GV::os.relative_to_full_path(args[0]);
 			string path2 = GV::os.relative_to_full_path(args[1]);
-			/*if (path == path2) {
-				if (core::frename(path, args[1]) == 0) {
-					cout << "не удалось переименовать файл " << path << endl;
-				}
-			}
-			else {*/
-				int file_inode = core::fopen(path);
-				if (path != "/" && file_inode) {
-					int size = core::fsize(file_inode);
 
-					char* buf;
-					buf = new char[1];//чтоб не было ошибки
+			int file_inode = core::fopen(path);
+			if (path != "/" && file_inode) {
+				int size = core::fsize(file_inode);
+
+				char* buf;
+				buf = new char[1];//чтоб не было ошибки
+				if (size != 0) {
+					buf = new char[size];
+					core::fread(file_inode, 0, size, buf);
+				}
+				int new_file_inode = core::fcreate(path2);
+				if (new_file_inode && path2 != "/") {
 					if (size != 0) {
-						buf = new char[size];
-						core::fread(file_inode, 0, size, buf);
+						core::fwrite(new_file_inode, 0, size, buf);
 					}
-					int new_file_inode = core::fcreate(path2);
-					if (new_file_inode && path2 != "/") {
-						if (size != 0) {
-							core::fwrite(new_file_inode, 0, size, buf);
-						}
-					}
-					else {
-						cout << "не удалось содать файл " << path2 << endl;
-					}
-					core::fdelete(path);
 				}
 				else {
-					cout << "не удалось создать файл " << path << endl;
+					cout << "не удалось содать файл " << path2 << endl;
 				}
-			//}
+				core::fdelete(path);
+			}
+			else {
+				cout << "не удалось создать файл " << path << endl;
+			}
+		}
+	};
+	GV::cmds["append"] = [](std::vector < std::string> args) {
+		if (args.size()>1) {
+			string path = GV::os.relative_to_full_path(args[0]);
+			int size = std::stoi(args[1]);
+
+			int file_inode = core::fopen(path);
+			if (file_inode) {
+				char*buf = new char[size];
+				cout << "> ";
+				cin.read(buf, size);
+				if (std::cin.peek()) std::cin.ignore();
+				cout << "дозаписано " << core::fappend(file_inode, size, buf) << " байт" << endl;
+			}
+			else {
+				cout << "файл " << path << " не удалось открыть." << endl;
+			}
+		}
+		else {
+			cout << "недостаточно аргументов. \nструктрура комманды: append <path> <count>" << endl;
+		}
+	};
+	GV::cmds["read"] = [](std::vector < std::string> args) {
+		if (args.size() > 2) {
+			string path = GV::os.relative_to_full_path(args[0]);
+			int offset = std::stoi(args[1]);
+			int size = std::stoi(args[2]);
+
+			int file_inode = core::fopen(path);
+			if (file_inode) {
+				char*buf = new char[size];
+				memset(buf, 0, size);
+				core::fread(file_inode, offset, size, buf);
+				cout << "прочитано: " << std::string(buf, size) << endl;
+			}
+			else {
+				cout << "файл " << path << " не удалось открыть." << endl;
+			}
+		}
+		else {
+			cout << "недостаточно аргументов. \nструктрура комманды: read <path> <offset> <count>" << endl;
+		}
+	};
+	GV::cmds["write"] = [](std::vector < std::string> args) {
+		if (args.size() > 2) {
+			string path = GV::os.relative_to_full_path(args[0]);
+			int offset = std::stoi(args[1]);
+			int size = std::stoi(args[2]);
+
+			int file_inode = core::fopen(path);
+			if (file_inode) {
+				char*buf = new char[size];
+				cout << "> ";
+				cin.read(buf, size);
+				if (std::cin.peek()) std::cin.ignore();
+				cout << "записано: " << core::fwrite(file_inode, offset, size, buf) << " байт" << endl;
+			}
+			else {
+				cout << "файл " << path << " не удалось открыть." << endl;
+			}
+		}
+		else {
+			cout << "недостаточно аргументов. \nструктрура комманды: write <path> <offset> <count>" << endl;
 		}
 	};
 }
