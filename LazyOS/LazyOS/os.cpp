@@ -52,6 +52,8 @@ std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::user_get()
 
 int LazyOS::user_login(std::string login, std::string pswd)
 {
+	pswd = util::stupid_hash(pswd);
+
 	int inode_number = core::fopen("/users");
 	int size = core::fsize(inode_number);
 
@@ -68,6 +70,7 @@ int LazyOS::user_login(std::string login, std::string pswd)
 
 int LazyOS::user_add(std::string login, std::string pswd)
 {
+	pswd = util::stupid_hash(pswd);
 	int inode_number = core::fopen("/users");
 	int size = core::fsize(inode_number);
 	
@@ -78,18 +81,33 @@ int LazyOS::user_add(std::string login, std::string pswd)
 			user write_user(i, login, pswd);
 
 			core::fwrite(inode_number, i * 64, 64, (char*)&write_user);
+			if (i != 0) {
+				core::fcreate("/home/" + std::string(login) + "/");
+				inode attrs = core::fget_attributes(core::fopen("/home/" + std::string(login) + "/"));
+				attrs.uid = i;
+				attrs.gid = write_user.gid;
+				core::fset_attributes(core::fopen("/home/" + std::string(login) + "/"), attrs);
+			}
 			return write_user.uid;
 		}
 	}
 	user write_user(size / 64, login, pswd);
 	core::fappend(inode_number, 64, (char*)&write_user);
+
+	if (size != 0) {
+		core::fcreate("/home/" + std::string(login) + "/");
+		inode attrs = core::fget_attributes(core::fopen("/home/" + std::string(login) + "/"));
+		attrs.uid = size/64;
+		attrs.gid = write_user.gid;
+		core::fset_attributes(core::fopen("/home/" + std::string(login) + "/"), attrs);
+	}
+
 	return write_user.uid;
 }
 
 int LazyOS::user_del(std::string login)
 {
-	if (login == "ghost")
-		return -1;
+
 	int inode_number = core::fopen("/users");
 	int size = core::fsize(inode_number);
 
@@ -97,9 +115,11 @@ int LazyOS::user_del(std::string login)
 		user temp_user;
 		core::fread(inode_number, i * 64, 64, (char*)&temp_user);
 		if (std::string(temp_user.login) == login) {
-			strcpy_s(temp_user.login, "");
-			core::fwrite(inode_number, i * 64, 64, (char*)&temp_user);
-			return temp_user.uid;
+			if (i != 0) {
+				strcpy_s(temp_user.login, "");
+				core::fwrite(inode_number, i * 64, 64, (char*)&temp_user);
+				return temp_user.uid;
+			}
 		}
 	}
 
@@ -108,8 +128,6 @@ int LazyOS::user_del(std::string login)
 
 int LazyOS::user_rnm(std::string login, std::string new_login)
 {
-	if (login == "ghost")
-		return -1;
 	int inode_number = core::fopen("/users");
 	int size = core::fsize(inode_number);
 
@@ -117,9 +135,11 @@ int LazyOS::user_rnm(std::string login, std::string new_login)
 		user temp_user;
 		core::fread(inode_number, i * 64, 64, (char*)&temp_user);
 		if (strcmp(temp_user.login, login.c_str()) == 0) {
-			strcpy_s(temp_user.login, new_login.c_str());
-			core::fwrite(inode_number, i * 64, 64, (char*)&temp_user);
-			return temp_user.uid;
+			if (i != 0) {
+				strcpy_s(temp_user.login, new_login.c_str());
+				core::fwrite(inode_number, i * 64, 64, (char*)&temp_user);
+				return temp_user.uid;
+			}
 		}
 	}
 
@@ -159,6 +179,7 @@ std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::group_get()
 
 int LazyOS::group_add(std::string name, std::string pswd)
 {
+	pswd = util::stupid_hash(pswd);
 	if (current_user.gid == 0) {
 
 		int inode_number = core::fopen("/groups");
@@ -194,7 +215,7 @@ int LazyOS::group_add(std::string name, std::string pswd)
 
 int LazyOS::group_del(std::string name, std::string pswd)
 {
-	
+	pswd = util::stupid_hash(pswd);
 	int inode_number = core::fopen("/groups");
 	int size = core::fsize(inode_number);
 
@@ -248,28 +269,27 @@ int LazyOS::resize(int size, int size_claster)
 		set_bit(i, 0x1);
 	}
 
+	current_user = user(0, "root", util::stupid_hash("12345"));
+	current_user.gid = 0;
 
-	current_user = user(0, "root", "12345");
 	core::fcreate("/");
-	GV::os.dirs = util::split("/", '/');
 
-	core::fcreate("/homes/");
+	core::fcreate("/home/");
 	core::fcreate("/users");
 	core::fcreate("/groups");
 	
+	user_add("root", "12345");
+	group_add("sup", "12345");
+
 	core::fcreate("/dir1/");
 	core::fcreate("/dir1/dir2/");
 	core::fcreate("/dir1/file");
 
-
-
-	user_add("root", "12345");
 	user_add("ghost", "");
 	user_add("andermirik", "hello world!");
 	user_add("dim14k", "qwerty");
 
-	current_user = user(user_login("ghost", ""), "ghost", "");
-	group_add("default", "");
+	GV::os.dirs = util::split("/", '/');
 	return size / size_claster/8;
 	return -1;
 }

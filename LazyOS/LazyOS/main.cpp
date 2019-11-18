@@ -28,10 +28,14 @@ int main() {
 	SetConsoleOutputCP(1251);
 	setlocale(0, "rus");
 
-	util::set_text_color(colors::White);
+	util::set_text_color(colors::White);	
+
 
 	set_commands();
-
+	
+#if 1
+	GV::cmds["init"]({});
+#endif
 	GV::cmds["users"]({ "login" });
 
 	if (std::string(GV::os.current_user.login) == ""){

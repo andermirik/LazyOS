@@ -37,5 +37,7 @@ namespace util {
 	uint16_t write_rwxrwxrwx(uint16_t mode, uint16_t num);
 	uint16_t read_rwxrwxrwx(uint16_t mode);
 
+	std::string stupid_hash(std::string pswd);
+
 	std::string read_pswd();
 }

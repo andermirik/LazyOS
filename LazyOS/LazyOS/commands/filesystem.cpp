@@ -19,7 +19,7 @@ std::string long_to_time(uint64_t ltime) {
 }
 
 void set_filesystem_commands() {
-	GV::cmds["dir"] = [](std::vector<std::string> args) {
+	GV::cmds["ls"] = [](std::vector<std::string> args) {
 		if (args.empty()) {
 			args.push_back(util::join(GV::os.dirs, "/"));
 		}
@@ -36,18 +36,18 @@ void set_filesystem_commands() {
 			memcpy(&file, buf + i * 64, 64);
 
 			LazyOS::inode inode = GV::os.read_inode(file.n_inode);
-			uint16_t attrs = core::fget_attributes(file.n_inode);
-			uint16_t type = util::read_first_4_bits(attrs);
-			uint16_t rules = util::read_rwxrwxrwx(attrs);
+			auto attrs = core::fget_attributes(file.n_inode);
+			uint16_t type = util::read_first_4_bits(attrs.mode);
+			uint16_t rules = util::read_rwxrwxrwx(attrs.mode);
 
 			if (type == 0x5D || type == 0xD) {
-				util::set_text_color(colors::Yellow);
-				cout << std::setw(10) << std::left 
+				util::set_text_color(colors::LightBlue);
+				cout << std::setw(15) << std::left 
 					<< util::file_to_filename(file) + "/";
 				util::set_text_color(colors::White);
 			}
 			else {
-				cout << std::setw(10) << std::left 
+				cout << std::setw(15) << std::left 
 					<< util::file_to_filename(file);
 			}
 
@@ -55,28 +55,63 @@ void set_filesystem_commands() {
 
 			
 			std::bitset<9> rwx(rules);
-			for (int i = 0; i < 9; i++) {
+			for (int i = 8; i >= 0; i--) {
+
 				if (rwx[i] == 1) {
 					if (i % 3 == 0)
-						cout << "r";
+						cout << "x";
 					else if (i % 3 == 1)
 						cout << "w";
 					else if (i % 3 == 2)
-						cout << "x";
+						cout << "r";
 				}
 				else {
 					cout << "-";
 				}
 			}
-
-			cout << " uid: " << inode.uid << "\t";
-			cout << " gid: " << inode.gid << "\t";
+			cout << "\t";
 			cout << " size: " << inode.size << "\t";
-			cout << " time: " << util::replace_all(long_to_time(inode.date_modification), "\n", "") << "\t";
+			cout << " uid: " << inode.uid << "\t";
+			if (inode.gid == 0xFFFFFFFF)
+				cout << " gid: " << "-1" << "\t";
+			else
+				cout << " gid: " << inode.gid << "\t";
+			cout << " iid: " << file.n_inode << "\t";
+			cout << util::replace_all(long_to_time(inode.date_modification), "\n", "") << endl;
 
-			cout << " iid: " << file.n_inode << endl;
 		}
 		
+	};
+	GV::cmds["dir"] = [](std::vector<std::string> args) {
+		if (args.empty()) {
+			args.push_back(util::join(GV::os.dirs, "/"));
+		}
+		int file_inode = core::fopen(args[0]);
+		if (file_inode == 0 && args[0] != "/") {
+			cout << "такого файла не существует!" << endl;
+			return;
+		}
+		int size = core::fsize(file_inode);
+		char* buf = new char[size];
+		core::fread(file_inode, 0, size, buf);
+		for (int i = 0; i < size / 64; i++) {
+			LazyOS::directory_file file;
+			memcpy(&file, buf + i * 64, 64);
+
+			auto attrs = core::fget_attributes(file.n_inode);
+			uint16_t type = util::read_first_4_bits(attrs.mode);
+
+			if (type == 0x5D || type == 0xD) {
+				util::set_text_color(colors::LightBlue);
+				cout << util::file_to_filename(file) + "";
+				util::set_text_color(colors::White);
+			}
+			else {
+				cout << util::file_to_filename(file);
+			}
+			cout << " ";
+		}
+		cout << endl;
 	};
 	GV::cmds["cd"] = [](std::vector<std::string> args) {
 		if (!args.empty()) {
@@ -87,7 +122,8 @@ void set_filesystem_commands() {
 			string path = GV::os.relative_to_full_path(args[0]);
 
 			int file_inode = core::fopen(path);
-			int file_type = util::read_first_4_bits(core::fget_attributes(file_inode));
+			auto attrs = core::fget_attributes(file_inode);
+			int file_type = util::read_first_4_bits(attrs.mode);
 			bool is_dir = file_type == 0xD || file_type == 0x5D;
 			
 			if ((file_inode || path == "/") && is_dir == true) {
@@ -106,8 +142,13 @@ void set_filesystem_commands() {
 	GV::cmds["mk"] = [](std::vector<std::string> args) {
 		if (!args.empty()) {
 			string path = GV::os.relative_to_full_path(args[0]);
-			if (core::fcreate(path) == 0) {
+			int err = core::fcreate(path);
+			if (err == 0) {
 				cout << "не удалось создать файл " << path << endl;
+			}
+			else if (err == -1) {
+				cout << "не удалось создать файл " << path << endl;
+				cout << "не достаточно прав доступа." << endl;
 			}
 		}
 	};

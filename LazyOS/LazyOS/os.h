@@ -58,7 +58,7 @@ public:
 			strcpy_s(this->login, login.c_str());
 			strcpy_s(this->pswd, pswd.c_str());
 			this->uid = uid;
-			this->gid = 0;
+			this->gid = 0xFFFFFFFF;
 		};
 	};
 	user current_user;

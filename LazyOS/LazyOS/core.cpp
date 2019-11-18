@@ -1,7 +1,7 @@
 #include "core.h"
 #include <chrono>
 #include "utils.h"
-
+#include <bitset>
 /*
 	0xD  - dir
 	0x5D - system dir
@@ -15,31 +15,42 @@ int create_file(int inode_number, LazyOS::inode& inode, LazyOS::inode& new_inode
 	char buf[512];
 	//insert file
 	if (k == dirs.size() - 2) {
-		auto now = std::chrono::system_clock::now();
-		uint32_t free_inode = GV::os.get_free_inode();
+		
+		std::bitset<9> rwx(util::read_rwxrwxrwx(inode.mode));
+		uint32_t uid = GV::os.current_user.uid;
+		uint32_t gid = GV::os.current_user.gid;
 
-		LazyOS::directory_file files[8];
-		LazyOS::directory_file file(free_inode, dirs[dirs.size() - 2]);
-		GV::os.read_block_indirect(inode, inode.size / 512, buf);
+		if (uid == 0 || gid == 0 ||(rwx[7] && uid == inode.uid) || (rwx[4] && gid == inode.gid && gid != 0xFFFFFFFF) || rwx[1]) {
 
-		memcpy(files, buf, 512);
-		for (int i = 0; i < 8; i++)
-			if (util::file_to_filename(files[i]) == dirs[dirs.size() - 2]) {
-				return 0;
-			}
-		files[inode.size / 64] = file;
-		memcpy(buf, files, 512);
+			auto now = std::chrono::system_clock::now();
+			uint32_t free_inode = GV::os.get_free_inode();
 
-		inode.size += 64;
+			LazyOS::directory_file files[8];
+			LazyOS::directory_file file(free_inode, dirs[dirs.size() - 2]);
+			GV::os.read_block_indirect(inode, inode.size / 512, buf);
 
-		GV::os.write_block_indirect(inode, inode.size / 512, buf);
-		GV::os.write_inode(inode_number, inode);
+			memcpy(files, buf, 512);
+			for (int i = 0; i < 8; i++)
+				if (util::file_to_filename(files[i]) == dirs[dirs.size() - 2]) {
+					return 0;
+				}
+			files[inode.size / 64] = file;
+			memcpy(buf, files, 512);
+
+			inode.size += 64;
+
+			GV::os.write_block_indirect(inode, inode.size / 512, buf);
+			GV::os.write_inode(inode_number, inode);
 
 
-		GV::os.write_inode(free_inode, new_inode);
-		GV::os.set_bit(free_inode + 256, 0x1);
+			GV::os.write_inode(free_inode, new_inode);
+			GV::os.set_bit(free_inode + 256, 0x1);
 
-		return 1;
+			return 1;
+		}
+		else {
+			return -1;
+		}
 	}
 	//search directory to insert
 	for (int i = 0; i < inode.size / 64; i++) {
@@ -83,7 +94,9 @@ int core::fcreate(std::string filename)
 	else if (dirs[dirs.size() - 1] != "" && dirs.size() > 1) {  //file
 		LazyOS::inode n_inode = { 0 };
 		n_inode.mode = util::write_first_4_bits(n_inode.mode, 0xF);
-		n_inode.mode = util::write_rwxrwxrwx(n_inode.mode, 0000);
+		n_inode.mode = util::write_rwxrwxrwx(n_inode.mode, 0770);
+		n_inode.uid = GV::os.current_user.uid;
+		n_inode.gid = GV::os.current_user.gid;
 		n_inode.date_creation = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 		n_inode.date_modification = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
@@ -92,10 +105,12 @@ int core::fcreate(std::string filename)
 		return create_file(0, root, n_inode, dirs, 1);
 	}
 	else if (dirs[dirs.size() - 1] == "" && dirs.size() > 2) { //dir
-
+		
 		LazyOS::inode n_inode = { 0 };
 		n_inode.mode = util::write_first_4_bits(n_inode.mode, 0xD);
-		n_inode.mode = util::write_rwxrwxrwx(n_inode.mode, 0000);
+		n_inode.mode = util::write_rwxrwxrwx(n_inode.mode, 0770);
+		n_inode.uid = GV::os.current_user.uid;
+		n_inode.gid = GV::os.current_user.gid;
 		n_inode.date_creation = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 		n_inode.date_modification = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
@@ -352,16 +367,20 @@ uint64_t core::fsize(int inode_number)
 }
 
 
-int core::fget_attributes(int inode_number)
+LazyOS::inode core::fget_attributes(int inode_number)
 {
 	LazyOS::inode file_inode = GV::os.read_inode(inode_number);
-	return file_inode.mode;
+	return file_inode;
 }
 
-int core::fset_attributes(int inode_number, uint16_t mode)
+int core::fset_attributes(int inode_number, LazyOS::inode& inode)
 {
 	LazyOS::inode file_inode = GV::os.read_inode(inode_number);
-	file_inode.mode = mode;
+	file_inode.mode = inode.mode;
+	file_inode.gid = inode.gid;
+	file_inode.uid = inode.uid;
+	file_inode.nlinks = inode.nlinks;
+	file_inode.date_creation = inode.date_creation;
 	GV::os.write_inode(inode_number, file_inode);
 	return 1;
 }

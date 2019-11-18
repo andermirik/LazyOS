@@ -77,6 +77,13 @@ namespace util {
 		mode &= (mode & 0x1FF);
 		return mode;
 	}
+	std::string stupid_hash(std::string pswd)
+	{
+		srand(1337);
+		for (int i = 0; i < pswd.size(); i++)
+			pswd[i] = (rand() * pswd[i]) % 255;
+		return pswd;
+	}
 	std::string read_pswd()
 	{
 		std::string pswd;
