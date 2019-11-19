@@ -12,7 +12,7 @@ std::string LazyOS::relative_to_full_path(std::string path)
 		return path;
 	}
 	else if (path[0] == '~') {
-		return util::replace_all(path, "~", "/homes/" + std::string(GV::os.current_user.login));
+		return util::replace_all(path, "~", "/home/" + std::string(GV::os.current_user.login));
 	}
 	else {
 		auto temp_dirs = GV::os.dirs;
@@ -33,11 +33,23 @@ std::string LazyOS::relative_to_full_path(std::string path)
 	}
 }
 
+void LazyOS::sudo()
+{
+	sudo_temp_user = GV::os.current_user;
+	GV::os.current_user = LazyOS::user(0, "root", "");
+	GV::os.current_user.gid = 0;
+}
+
+void LazyOS::suend()
+{
+	GV::os.current_user = sudo_temp_user;
+}
+
 std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::user_get()
 {
 	std::vector<std::tuple<uint32_t, uint32_t, std::string>> users;
 
-	int inode_number = core::fopen("/users");
+	int inode_number = core::fopen("/etc/users");
 	int size = core::fsize(inode_number);
 
 	user temp_user;
@@ -52,9 +64,11 @@ std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::user_get()
 
 int LazyOS::user_login(std::string login, std::string pswd)
 {
+	
+
 	pswd = util::stupid_hash(pswd);
 
-	int inode_number = core::fopen("/users");
+	int inode_number = core::fopen("/etc/users");
 	int size = core::fsize(inode_number);
 
 	for (int i = 0; i < size / 64; i++) {
@@ -64,14 +78,13 @@ int LazyOS::user_login(std::string login, std::string pswd)
 			return temp_user.uid;
 		}
 	}
-
 	return -1;
 }
 
 int LazyOS::user_add(std::string login, std::string pswd)
 {
 	pswd = util::stupid_hash(pswd);
-	int inode_number = core::fopen("/users");
+	int inode_number = core::fopen("/etc/users");
 	int size = core::fsize(inode_number);
 	
 	for (int i = 0; i < size / 64; i++) {
@@ -108,7 +121,7 @@ int LazyOS::user_add(std::string login, std::string pswd)
 int LazyOS::user_del(std::string login)
 {
 
-	int inode_number = core::fopen("/users");
+	int inode_number = core::fopen("/etc/users");
 	int size = core::fsize(inode_number);
 
 	for (int i = 0; i < size / 64; i++) {
@@ -128,7 +141,7 @@ int LazyOS::user_del(std::string login)
 
 int LazyOS::user_rnm(std::string login, std::string new_login)
 {
-	int inode_number = core::fopen("/users");
+	int inode_number = core::fopen("/etc/users");
 	int size = core::fsize(inode_number);
 
 	for (int i = 0; i < size / 64; i++) {
@@ -149,14 +162,14 @@ int LazyOS::user_rnm(std::string login, std::string new_login)
 LazyOS::user LazyOS::user_read(int user_number)
 {
 	user ret;
-	int inode_number = core::fopen("/users");
+	int inode_number = core::fopen("/etc/users");
 	core::fread(inode_number, user_number * 64, 64, (char*)&ret);
 	return ret;
 }
 
 void LazyOS::user_write(int user_number, user& u)
 {
-	int inode_number = core::fopen("/users");
+	int inode_number = core::fopen("/etc/users");
 	core::fwrite(inode_number, user_number * 64, 64, (char*)&u);
 }
 
@@ -164,7 +177,7 @@ std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::group_get()
 {
 	std::vector<std::tuple<uint32_t, uint32_t, std::string>> users;
 
-	int inode_number = core::fopen("/groups");
+	int inode_number = core::fopen("/etc/groups");
 	int size = core::fsize(inode_number);
 
 	group temp_group;
@@ -182,7 +195,7 @@ int LazyOS::group_add(std::string name, std::string pswd)
 	pswd = util::stupid_hash(pswd);
 	if (current_user.gid == 0) {
 
-		int inode_number = core::fopen("/groups");
+		int inode_number = core::fopen("/etc/groups");
 		int size = core::fsize(inode_number);
 
 		for (int i = 0; i < size / 64; i++) {
@@ -216,7 +229,7 @@ int LazyOS::group_add(std::string name, std::string pswd)
 int LazyOS::group_del(std::string name, std::string pswd)
 {
 	pswd = util::stupid_hash(pswd);
-	int inode_number = core::fopen("/groups");
+	int inode_number = core::fopen("/etc/groups");
 	int size = core::fsize(inode_number);
 
 	for (int i = 0; i < size / 64; i++) {
@@ -275,8 +288,13 @@ int LazyOS::resize(int size, int size_claster)
 	core::fcreate("/");
 
 	core::fcreate("/home/");
-	core::fcreate("/users");
-	core::fcreate("/groups");
+	auto attrs = core::fget_attributes(core::fopen("/home/"));
+	attrs.mode = util::write_rwxrwxrwx(attrs.mode, 0774);
+	core::fset_attributes(core::fopen("/home/"), attrs);
+
+	core::fcreate("/etc/");
+	core::fcreate("/etc/users");
+	core::fcreate("/etc/groups");
 	
 	user_add("root", "12345");
 	group_add("sup", "12345");

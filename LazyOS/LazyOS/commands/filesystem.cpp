@@ -30,57 +30,62 @@ void set_filesystem_commands() {
 		}
 		int size = core::fsize(file_inode);
 		char* buf = new char[size];
-		core::fread(file_inode, 0, size, buf);
-		for (int i = 0; i < size / 64; i++) {
-			LazyOS::directory_file file;
-			memcpy(&file, buf + i * 64, 64);
+		int bytes_readed = core::fread(file_inode, 0, size, buf);
+		if (bytes_readed >= 0) {
 
-			LazyOS::inode inode = GV::os.read_inode(file.n_inode);
-			auto attrs = core::fget_attributes(file.n_inode);
-			uint16_t type = util::read_first_4_bits(attrs.mode);
-			uint16_t rules = util::read_rwxrwxrwx(attrs.mode);
+			for (int i = 0; i < size / 64; i++) {
+				LazyOS::directory_file file;
+				memcpy(&file, buf + i * 64, 64);
 
-			if (type == 0x5D || type == 0xD) {
-				util::set_text_color(colors::LightBlue);
-				cout << std::setw(15) << std::left 
-					<< util::file_to_filename(file) + "/";
-				util::set_text_color(colors::White);
-			}
-			else {
-				cout << std::setw(15) << std::left 
-					<< util::file_to_filename(file);
-			}
+				LazyOS::inode inode = GV::os.read_inode(file.n_inode);
+				auto attrs = core::fget_attributes(file.n_inode);
+				uint16_t type = util::read_first_4_bits(attrs.mode);
+				uint16_t rules = util::read_rwxrwxrwx(attrs.mode);
 
-			cout << " ";
-
-			
-			std::bitset<9> rwx(rules);
-			for (int i = 8; i >= 0; i--) {
-
-				if (rwx[i] == 1) {
-					if (i % 3 == 0)
-						cout << "x";
-					else if (i % 3 == 1)
-						cout << "w";
-					else if (i % 3 == 2)
-						cout << "r";
+				if (type == 0x5D || type == 0xD) {
+					util::set_text_color(colors::LightBlue);
+					cout << std::setw(15) << std::left
+						<< util::file_to_filename(file) + "";
+					util::set_text_color(colors::White);
 				}
 				else {
-					cout << "-";
+					cout << std::setw(15) << std::left
+						<< util::file_to_filename(file);
 				}
-			}
-			cout << "\t";
-			cout << " size: " << inode.size << "\t";
-			cout << " uid: " << inode.uid << "\t";
-			if (inode.gid == 0xFFFFFFFF)
-				cout << " gid: " << "-1" << "\t";
-			else
-				cout << " gid: " << inode.gid << "\t";
-			cout << " iid: " << file.n_inode << "\t";
-			cout << util::replace_all(long_to_time(inode.date_modification), "\n", "") << endl;
 
+				cout << " ";
+
+
+				std::bitset<9> rwx(rules);
+				for (int i = 8; i >= 0; i--) {
+
+					if (rwx[i] == 1) {
+						if (i % 3 == 0)
+							cout << "x";
+						else if (i % 3 == 1)
+							cout << "w";
+						else if (i % 3 == 2)
+							cout << "r";
+					}
+					else {
+						cout << "-";
+					}
+				}
+				cout << "\t";
+				cout << " size: " << inode.size << "\t";
+				cout << " uid: " << inode.uid << "\t";
+				if (inode.gid == 0xFFFFFFFF)
+					cout << " gid: " << "-1" << "\t";
+				else
+					cout << " gid: " << inode.gid << "\t";
+				cout << " iid: " << file.n_inode << "\t";
+				cout << util::replace_all(long_to_time(inode.date_modification), "\n", "") << endl;
+
+			}
 		}
-		
+		else {
+			cout << "недостаточно прав!" << endl;
+		}
 	};
 	GV::cmds["dir"] = [](std::vector<std::string> args) {
 		if (args.empty()) {
@@ -93,25 +98,32 @@ void set_filesystem_commands() {
 		}
 		int size = core::fsize(file_inode);
 		char* buf = new char[size];
-		core::fread(file_inode, 0, size, buf);
-		for (int i = 0; i < size / 64; i++) {
-			LazyOS::directory_file file;
-			memcpy(&file, buf + i * 64, 64);
 
-			auto attrs = core::fget_attributes(file.n_inode);
-			uint16_t type = util::read_first_4_bits(attrs.mode);
+		int bytes_readed = core::fread(file_inode, 0, size, buf);
+		if (bytes_readed >= 0) {
 
-			if (type == 0x5D || type == 0xD) {
-				util::set_text_color(colors::LightBlue);
-				cout << util::file_to_filename(file) + "";
-				util::set_text_color(colors::White);
+			for (int i = 0; i < size / 64; i++) {
+				LazyOS::directory_file file;
+				memcpy(&file, buf + i * 64, 64);
+
+				auto attrs = core::fget_attributes(file.n_inode);
+				uint16_t type = util::read_first_4_bits(attrs.mode);
+
+				if (type == 0x5D || type == 0xD) {
+					util::set_text_color(colors::LightBlue);
+					cout << util::file_to_filename(file) + "";
+					util::set_text_color(colors::White);
+				}
+				else {
+					cout << util::file_to_filename(file);
+				}
+				cout << " ";
 			}
-			else {
-				cout << util::file_to_filename(file);
-			}
-			cout << " ";
+			cout << endl;
 		}
-		cout << endl;
+		else {
+			cout << "недостаточно прав!" << endl;
+		}
 	};
 	GV::cmds["cd"] = [](std::vector<std::string> args) {
 		if (!args.empty()) {
@@ -155,8 +167,13 @@ void set_filesystem_commands() {
 	GV::cmds["rm"] = [](std::vector<std::string> args) {
 		if (!args.empty()) {
 			string path = GV::os.relative_to_full_path(args[0]);
-			if (core::fdelete(path) == 0) {
+			int err = core::fdelete(path);
+			if (err == 0) {
 				cout << "не удалось удалить файл " << path << endl;
+			}
+			else if (err == -1) {
+				cout << "не удалось удалить файл " << path << endl;
+				cout << "не достаточно прав доступа." << endl;
 			}
 		}
 	};
@@ -202,7 +219,14 @@ void set_filesystem_commands() {
 				cout << "> ";
 				cin.read(buf, size);
 				if (std::cin.peek()) std::cin.ignore();
-				cout << "дозаписано " << core::fappend(file_inode, size, buf) << " байт" << endl;
+
+				int count_bytes = core::fappend(file_inode, size, buf);
+				if (count_bytes >= 0) {
+					cout << "дозаписано: " << count_bytes << " байт" << endl;
+				}
+				else {
+					cout << "недостаточно прав!" << endl;
+				}
 			}
 			else {
 				cout << "файл " << path << " не удалось открыть." << endl;
@@ -222,8 +246,12 @@ void set_filesystem_commands() {
 			if (file_inode) {
 				char*buf = new char[size];
 				memset(buf, 0, size);
-				core::fread(file_inode, offset, size, buf);
-				cout << "прочитано: " << std::string(buf, size) << endl;
+				if (core::fread(file_inode, offset, size, buf) >= 0) {
+					cout << "прочитано: " << std::string(buf, size) << endl;
+				}
+				else {
+					cout << "недостаточно прав!" << endl;
+				}
 			}
 			else {
 				cout << "файл " << path << " не удалось открыть." << endl;
@@ -245,7 +273,13 @@ void set_filesystem_commands() {
 				cout << "> ";
 				cin.read(buf, size);
 				if (std::cin.peek()) std::cin.ignore();
-				cout << "записано: " << core::fwrite(file_inode, offset, size, buf) << " байт" << endl;
+				int count_bytes = core::fwrite(file_inode, offset, size, buf);
+				if (count_bytes >= 0) {
+					cout << "записано: " << count_bytes << " байт" << endl;
+				}
+				else {
+					cout << "недостаточно прав!" << endl;
+				}
 			}
 			else {
 				cout << "файл " << path << " не удалось открыть." << endl;

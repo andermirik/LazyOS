@@ -190,53 +190,67 @@ int delete_file(int inode_number, LazyOS::inode& inode, std::vector<std::string>
 			return 0;
 		auto now = std::chrono::system_clock::now();
 
-		//take last file
-		GV::os.read_block_indirect(inode, inode.size/512, buf);
-		LazyOS::directory_file files[8];
-		memcpy(files, buf, 512);
-		LazyOS::directory_file last_file;
-		last_file = files[inode.size / 64 - 1];
+		std::bitset<9> rwx(util::read_rwxrwxrwx(inode.mode));
+		uint32_t uid = GV::os.current_user.uid;
+		uint32_t gid = GV::os.current_user.gid;
 
-		if (util::file_to_filename(last_file) == dirs[dirs.size() - 2]) {//is last file
-			LazyOS::inode a = GV::os.read_inode(files[inode.size / 64 - 1].n_inode);
-			recursive_clear(files[inode.size / 64 - 1].n_inode, a);
-			files[inode.size / 64 - 1] = LazyOS::directory_file();
-			memcpy(buf, files, 512);
-			inode.size -= 64;
-			
-			GV::os.write_block_indirect(inode, inode.size / 512, buf);
-			GV::os.write_inode(inode_number, inode);
-			return 1;
-		}
-		else {//search file
-			for (int i = 0; i < inode.size / 64; i++) {
-				if (i % 8 == 0)
-					GV::os.read_block_indirect(inode, i/8, buf);
-				LazyOS::directory_file file;
-				memcpy(&file, buf + i * sizeof(LazyOS::directory_file), sizeof(LazyOS::directory_file));
-				if (dirs[dirs.size() - 2] == util::file_to_filename(file)) { //swap files
-					files[inode.size / 64 - 1] = LazyOS::directory_file();
-					memcpy(buf, files, 512);
-					GV::os.write_block_indirect(inode, inode.size / 512, buf);
+		if (uid == 0 || gid == 0 || (rwx[7] && uid == inode.uid) || (rwx[4] && gid == inode.gid && gid != 0xFFFFFFFF) || rwx[1]) {
 
-					GV::os.read_block_indirect(inode, i / 8, buf);
-					memcpy(files, buf, 512);
-					
-					LazyOS::inode a = GV::os.read_inode(files[i%8].n_inode);
-					recursive_clear(files[i % 8].n_inode, a);
+			//take last file
+			GV::os.read_block_indirect(inode, inode.size / 512, buf);
+			LazyOS::directory_file files[8];
+			memcpy(files, buf, 512);
+			LazyOS::directory_file last_file;
+			last_file = files[inode.size / 64 - 1];
 
-					files[i % 8] = last_file;
-					memcpy(buf, files, 512);
-					GV::os.write_block_indirect(inode, i / 8, buf);
+			if (util::file_to_filename(last_file) == dirs[dirs.size() - 2]) {//is last file
+				LazyOS::inode to_del_inode = GV::os.read_inode(files[inode.size / 64 - 1].n_inode);
 
-					inode.size -= 64;
-					GV::os.write_inode(inode_number, inode);
-					return 1;
+				recursive_clear(files[inode.size / 64 - 1].n_inode, to_del_inode);
+				files[inode.size / 64 - 1] = LazyOS::directory_file();
+				memcpy(buf, files, 512);
+				inode.size -= 64;
+
+				GV::os.write_block_indirect(inode, inode.size / 512, buf);
+				GV::os.write_inode(inode_number, inode);
+				return 1;
+
+			}
+			else {//search file
+				for (int i = 0; i < inode.size / 64; i++) {
+					if (i % 8 == 0)
+						GV::os.read_block_indirect(inode, i / 8, buf);
+					LazyOS::directory_file file;
+					memcpy(&file, buf + i * sizeof(LazyOS::directory_file), sizeof(LazyOS::directory_file));
+					if (dirs[dirs.size() - 2] == util::file_to_filename(file)) { //swap files
+						files[inode.size / 64 - 1] = LazyOS::directory_file();
+						memcpy(buf, files, 512);
+						GV::os.write_block_indirect(inode, inode.size / 512, buf);
+
+						GV::os.read_block_indirect(inode, i / 8, buf);
+						memcpy(files, buf, 512);
+
+						LazyOS::inode to_del_inode = GV::os.read_inode(files[i % 8].n_inode);
+
+
+
+						recursive_clear(files[i % 8].n_inode, to_del_inode);
+
+						files[i % 8] = last_file;
+						memcpy(buf, files, 512);
+						GV::os.write_block_indirect(inode, i / 8, buf);
+
+						inode.size -= 64;
+						GV::os.write_inode(inode_number, inode);
+						return 1;
+					}
+					continue;
 				}
-				continue;
 			}
 		}
-
+		else {
+			return -1;
+		}
 		return 0;
 	}
 	//search directory
@@ -273,86 +287,106 @@ int core::fdelete(std::string filename)
 int core::fread(int inode_number, int offset, int size, char* to_buf)
 {
 	LazyOS::inode file_inode = GV::os.read_inode(inode_number);
-	if (offset+size > file_inode.size) {
-		size = file_inode.size-offset;
-	}
-	int bytes_readed = 0;
-	char buf[512];
+	std::bitset<9> rwx(util::read_rwxrwxrwx(file_inode.mode));
+	uint32_t uid = GV::os.current_user.uid;
+	uint32_t gid = GV::os.current_user.gid;
 
-	int i = offset / 512;
-	if (offset % 512 != 0) {
-		GV::os.read_block_indirect(file_inode, i, buf);
-		size -= 512;
-		if (size < 0) {
-			memcpy(to_buf, buf + offset % 512, size + 512);
-			bytes_readed += 512 + size;
-		}
-		else {
-			memcpy(to_buf, buf + offset % 512, 512);
-			bytes_readed += 512;
-		}
-		i++;
-	}
+	if (uid == 0 || gid == 0 || (rwx[8] && uid == file_inode.uid) || (rwx[3] && gid == file_inode.gid && gid != 0xFFFFFFFF) || rwx[2]) {
 
-	for (int j=0; i <= file_inode.size / 512; i++, j++) {
-		GV::os.read_block_indirect(file_inode, i, buf);
-		size -= 512;
-		if (size < 0) {
-			memcpy(to_buf + j * 512, buf, size + 512);
-			bytes_readed += size+512;
+		if (offset + size > file_inode.size) {
+			size = file_inode.size - offset;
 		}
-		else {
-			bytes_readed += 512;
-			memcpy(to_buf + j * 512, buf, 512);
+		int bytes_readed = 0;
+		char buf[512];
+
+		int i = offset / 512;
+		if (offset % 512 != 0) {
+			GV::os.read_block_indirect(file_inode, i, buf);
+			size -= 512;
+			if (size < 0) {
+				memcpy(to_buf, buf + offset % 512, size + 512);
+				bytes_readed += 512 + size;
+			}
+			else {
+				memcpy(to_buf, buf + offset % 512, 512);
+				bytes_readed += 512;
+			}
+			i++;
 		}
+
+		for (int j = 0; i <= file_inode.size / 512; i++, j++) {
+			GV::os.read_block_indirect(file_inode, i, buf);
+			size -= 512;
+			if (size < 0) {
+				memcpy(to_buf + j * 512, buf, size + 512);
+				bytes_readed += size + 512;
+			}
+			else {
+				bytes_readed += 512;
+				memcpy(to_buf + j * 512, buf, 512);
+			}
+		}
+		GV::os.write_inode(inode_number, file_inode);
+		return bytes_readed;
 	}
-	GV::os.write_inode(inode_number, file_inode);
-	return bytes_readed;
+	else {
+		return -1;
+	}
 }
 
 int core::fwrite(int inode_number, int offset, int buf_size, char* by_buf)
 {
 	LazyOS::inode file_inode = GV::os.read_inode(inode_number);
-	if (file_inode.size < offset + buf_size) {
-		file_inode.size = offset + buf_size;
-	}
-	char buf[512];
-	int bytes_writed = 0;
-	int size = buf_size;
+	std::bitset<9> rwx(util::read_rwxrwxrwx(file_inode.mode));
+	uint32_t uid = GV::os.current_user.uid;
+	uint32_t gid = GV::os.current_user.gid;
 
-	int i = offset / 512;
-	int j = 0;
-	if (offset % 512 != 0) {
-		GV::os.read_block_indirect(file_inode, i, buf);
-		size -= 512;
-		if (size < 0) {
-			memcpy(buf + offset % 512, by_buf, size + 512);
-			bytes_writed += size + 512;
-		}
-		else {
-			memcpy(buf + offset % 512, by_buf, 512);
-			bytes_writed += 512;
-		}
-		GV::os.write_block_indirect(file_inode, i, buf);
-		j++;
-		i++;
-	}
+	if (uid == 0 || gid == 0 || (rwx[7] && uid == file_inode.uid) || (rwx[4] && gid == file_inode.gid && gid != 0xFFFFFFFF) || rwx[1]) {
 
-	for (; j <= buf_size / 512; i++, j++) {
-		GV::os.read_block_indirect(file_inode, i, buf);
-		size -= 512;
-		if (size < 0) {
-			memcpy(buf, by_buf + j * 512, size + 512);
-			bytes_writed += size + 512;
+		if (file_inode.size < offset + buf_size) {
+			file_inode.size = offset + buf_size;
 		}
-		else {
-			memcpy(buf, by_buf+j*512, 512);
-			bytes_writed += 512;
+		char buf[512];
+		int bytes_writed = 0;
+		int size = buf_size;
+
+		int i = offset / 512;
+		int j = 0;
+		if (offset % 512 != 0) {
+			GV::os.read_block_indirect(file_inode, i, buf);
+			size -= 512;
+			if (size < 0) {
+				memcpy(buf + offset % 512, by_buf, size + 512);
+				bytes_writed += size + 512;
+			}
+			else {
+				memcpy(buf + offset % 512, by_buf, 512);
+				bytes_writed += 512;
+			}
+			GV::os.write_block_indirect(file_inode, i, buf);
+			j++;
+			i++;
 		}
-		GV::os.write_block_indirect(file_inode, i, buf);
+
+		for (; j <= buf_size / 512; i++, j++) {
+			GV::os.read_block_indirect(file_inode, i, buf);
+			size -= 512;
+			if (size < 0) {
+				memcpy(buf, by_buf + j * 512, size + 512);
+				bytes_writed += size + 512;
+			}
+			else {
+				memcpy(buf, by_buf + j * 512, 512);
+				bytes_writed += 512;
+			}
+			GV::os.write_block_indirect(file_inode, i, buf);
+		}
+		GV::os.write_inode(inode_number, file_inode);
+		return bytes_writed;
 	}
-	GV::os.write_inode(inode_number, file_inode);
-	return bytes_writed;
+	else {
+		return -1;
+	}
 }
 
 int core::fappend(int inode_number, int buf_size, char* buf_append)

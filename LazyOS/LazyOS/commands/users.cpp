@@ -26,7 +26,9 @@ void set_users_commands() {
 				cout << "пароль: ";
 				pswd = util::read_pswd();
 
+				GV::os.sudo();
 				int uid = GV::os.user_add(login, pswd);
+				GV::os.suend();
 				if (uid != -1) {
 					cout << "пользователь " << login << " с uid " << uid << " успешно добавлен." << endl;
 				}
@@ -55,9 +57,13 @@ void set_users_commands() {
 				cout << "пароль: ";
 				pswd = util::read_pswd();
 
+				GV::os.sudo();
 				int uid = GV::os.user_login(login, pswd);
+				GV::os.suend();
 				if (uid != -1) {
+					GV::os.sudo();
 					GV::os.user_del(login);
+					GV::os.suend();
 					cout << "пользователь " << login << " успешно удалён!" << endl;
 				}
 				else {
@@ -79,9 +85,13 @@ void set_users_commands() {
 				cout << "новый логин: ";
 				std::getline(cin, new_login);
 
+				GV::os.sudo();
 				int uid = GV::os.user_login(login, pswd);
+				GV::os.suend();
 				if (uid != -1) {
+					GV::os.sudo();
 					GV::os.user_rnm(login, new_login);
+					GV::os.suend();
 					cout << "пользователь " << login << " успешно переименован!" << endl;
 				}
 				else {
@@ -100,7 +110,9 @@ void set_users_commands() {
 				cout << "пароль: ";
 				pswd = util::read_pswd();
 
+				GV::os.sudo();
 				int uid = GV::os.user_login(login, pswd);
+				GV::os.suend();
 				if (uid != -1) {
 					GV::os.current_user = LazyOS::user(uid, login, pswd);
 
@@ -108,6 +120,9 @@ void set_users_commands() {
 				else {
 					cout << "не верный логин или пароль" << endl;
 				}
+			}
+			else {
+				cout << "неизвестный аргумент " << args[0] << endl;
 			}
 		}
 		else {

@@ -17,6 +17,9 @@ public:
 	std::vector<std::string> dirs;
 
 	std::string relative_to_full_path(std::string path);
+	void sudo();
+	void suend();
+
 
 	struct group {
 		uint32_t gid;
@@ -62,6 +65,7 @@ public:
 		};
 	};
 	user current_user;
+	user sudo_temp_user;
 	std::vector<std::tuple<uint32_t, uint32_t, std::string>> user_get();
 
 	int user_login(std::string login, std::string pswd);
