@@ -39,10 +39,11 @@ void set_users_commands() {
 			}
 			else if (args[0] == "get") {
 				cout << "список пользователей: " << endl;
-
+				GV::os.sudo();
 				for (auto& [uid, gid, login] : GV::os.user_get()) {
 					printf("uid: %5d\tgid: %5d\tlogin: %s\n", uid, gid, login.c_str());
 				}
+				GV::os.suend();
 
 			}
 			else if (args[0] == "delete") {
@@ -98,6 +99,34 @@ void set_users_commands() {
 					cout << "не верный логин или пароль" << endl;
 				}
 			}
+			else if (args[0] == "passwd") {
+				string login, pswd, new_pswd;
+				if (args.size() > 1) {
+					login = args[1];
+				}
+				else {
+					cout << "логин: ";
+					std::getline(cin, login);
+				}
+				cout << "пароль: ";
+				pswd = util::read_pswd();
+
+				cout << "новый пароль: ";
+				new_pswd = util::read_pswd();
+
+				GV::os.sudo();
+				int uid = GV::os.user_login(login, pswd);
+				GV::os.suend();
+				if (uid != -1) {
+					GV::os.sudo();
+					GV::os.user_pswd(login, new_pswd);
+					GV::os.suend();
+					cout << "пользователь " << login << " успешно сменил пароль!" << endl;
+				}
+				else {
+					cout << "не верный логин или пароль" << endl;
+				}
+			}
 			else if (args[0] == "login") {
 				string login, pswd;
 				if (args.size() > 1) {
@@ -114,8 +143,11 @@ void set_users_commands() {
 				int uid = GV::os.user_login(login, pswd);
 				GV::os.suend();
 				if (uid != -1) {
+					GV::os.sudo();
+					auto [_uid, _gid, _login] = GV::os.user_get()[uid];
+					GV::os.suend();
 					GV::os.current_user = LazyOS::user(uid, login, pswd);
-
+					GV::os.current_user.gid = _gid;
 				}
 				else {
 					cout << "не верный логин или пароль" << endl;
@@ -131,6 +163,7 @@ void set_users_commands() {
 			cout << "add - добавить пользователя" << endl;
 			cout << "delete - удалить пользователя" << endl;
 			cout << "rename - переименовать пользователя" << endl;
+			cout << "passwd - смена пароля пользователя" << endl;
 			cout << "login - сменить пользователя" << endl;
 		}
 	};

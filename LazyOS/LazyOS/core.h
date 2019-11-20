@@ -15,5 +15,6 @@ namespace core {
 	
 	LazyOS::inode fget_attributes(int inode_number);
 	int fset_attributes(int inode_number, LazyOS::inode& inode);
+
 	int frename(std::string filename, std::string new_filename);
 }

@@ -205,16 +205,20 @@ int delete_file(int inode_number, LazyOS::inode& inode, std::vector<std::string>
 
 			if (util::file_to_filename(last_file) == dirs[dirs.size() - 2]) {//is last file
 				LazyOS::inode to_del_inode = GV::os.read_inode(files[inode.size / 64 - 1].n_inode);
+				if (uid == 0 || gid == 0 || (rwx[7] && uid == to_del_inode.uid) || (rwx[4] && gid == to_del_inode.gid && gid != 0xFFFFFFFF) || rwx[1]) {
 
-				recursive_clear(files[inode.size / 64 - 1].n_inode, to_del_inode);
-				files[inode.size / 64 - 1] = LazyOS::directory_file();
-				memcpy(buf, files, 512);
-				inode.size -= 64;
+					recursive_clear(files[inode.size / 64 - 1].n_inode, to_del_inode);
+					files[inode.size / 64 - 1] = LazyOS::directory_file();
+					memcpy(buf, files, 512);
+					inode.size -= 64;
 
-				GV::os.write_block_indirect(inode, inode.size / 512, buf);
-				GV::os.write_inode(inode_number, inode);
-				return 1;
-
+					GV::os.write_block_indirect(inode, inode.size / 512, buf);
+					GV::os.write_inode(inode_number, inode);
+					return 1;
+				}
+				else {
+					return -1;
+				}
 			}
 			else {//search file
 				for (int i = 0; i < inode.size / 64; i++) {
@@ -232,17 +236,21 @@ int delete_file(int inode_number, LazyOS::inode& inode, std::vector<std::string>
 
 						LazyOS::inode to_del_inode = GV::os.read_inode(files[i % 8].n_inode);
 
+						if (uid == 0 || gid == 0 || (rwx[7] && uid == to_del_inode.uid) || (rwx[4] && gid == to_del_inode.gid && gid != 0xFFFFFFFF) || rwx[1]) {
 
+							recursive_clear(files[i % 8].n_inode, to_del_inode);
 
-						recursive_clear(files[i % 8].n_inode, to_del_inode);
+							files[i % 8] = last_file;
+							memcpy(buf, files, 512);
+							GV::os.write_block_indirect(inode, i / 8, buf);
 
-						files[i % 8] = last_file;
-						memcpy(buf, files, 512);
-						GV::os.write_block_indirect(inode, i / 8, buf);
-
-						inode.size -= 64;
-						GV::os.write_inode(inode_number, inode);
-						return 1;
+							inode.size -= 64;
+							GV::os.write_inode(inode_number, inode);
+							return 1;
+						}
+						else {
+							return -1;
+						}
 					}
 					continue;
 				}

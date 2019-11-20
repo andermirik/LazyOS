@@ -72,13 +72,13 @@ void set_filesystem_commands() {
 					}
 				}
 				cout << "\t";
-				cout << " size: " << inode.size << "\t";
-				cout << " uid: " << inode.uid << "\t";
+				cout << " size: " << inode.size << "\t  ";
+				cout << " uid: " << inode.uid << "\t  ";
 				if (inode.gid == 0xFFFFFFFF)
-					cout << " gid: " << "-1" << "\t";
+					cout << " gid: " << "-1" << "\t  ";
 				else
-					cout << " gid: " << inode.gid << "\t";
-				cout << " iid: " << file.n_inode << "\t";
+					cout << " gid: " << inode.gid << "\t  ";
+				cout << " iid: " << file.n_inode << "\t  ";
 				cout << util::replace_all(long_to_time(inode.date_modification), "\n", "") << endl;
 
 			}
@@ -177,38 +177,97 @@ void set_filesystem_commands() {
 			}
 		}
 	};
-	GV::cmds["mv"] = [](std::vector < std::string> args) {
+	GV::cmds["mv"] = [](std::vector <std::string> args) {
 		if (args.size() > 1) {
 			string path = GV::os.relative_to_full_path(args[0]);
 			string path2 = GV::os.relative_to_full_path(args[1]);
+			if (path == path2)
+				return;
+
 
 			int file_inode = core::fopen(path);
-			if (path != "/" && file_inode) {
+			if (path != "/" && file_inode > 0) {
 				int size = core::fsize(file_inode);
-
-				char* buf;
-				buf = new char[1];//чтоб не было ошибки
-				if (size != 0) {
-					buf = new char[size];
-					core::fread(file_inode, 0, size, buf);
-				}
-				int new_file_inode = core::fcreate(path2);
-				if (new_file_inode && path2 != "/") {
+				if (util::read_first_4_bits(core::fget_attributes(file_inode).mode) == 0xF) {
+					char* buf;
+					buf = new char[1];//чтоб не было ошибки
 					if (size != 0) {
-						core::fwrite(new_file_inode, 0, size, buf);
+						buf = new char[size];
+						core::fread(file_inode, 0, size, buf);
+					}
+					if (core::fopen(path2) == 0 && path2 != "/") {
+						core::fcreate(path2);
+						int new_file_inode = core::fopen(path2);
+						if (new_file_inode >= 0 && path2 != "/") {
+							if (size != 0) {
+								core::fwrite(new_file_inode, 0, size, buf);
+							}
+						}
+						else {
+							cout << "не удалось содать файл " << path2 << endl;
+						}
+						core::fdelete(path);
+					}
+					else {
+						cout << "файл " << path2 << " уже существует" << endl;
 					}
 				}
 				else {
-					cout << "не удалось содать файл " << path2 << endl;
+					cout << "ошибка. файл " << path << " является директорией" << endl;
 				}
-				core::fdelete(path);
 			}
 			else {
-				cout << "не удалось создать файл " << path << endl;
+				cout << "не удалось открыть файл " << path << endl;
 			}
 		}
 	};
-	GV::cmds["append"] = [](std::vector < std::string> args) {
+	GV::cmds["cp"] = [](std::vector <std::string> args) {
+		if (args.size() > 1) {
+			string path = GV::os.relative_to_full_path(args[0]);
+			string path2 = GV::os.relative_to_full_path(args[1]);
+			if (path == path2) {
+				cout << path2 << " уже существует" << endl;
+				return;
+			}
+
+
+			int file_inode = core::fopen(path);
+			if (path != "/" && file_inode > 0) {
+				int size = core::fsize(file_inode);
+				if (util::read_first_4_bits(core::fget_attributes(file_inode).mode) == 0xF) {
+					char* buf;
+					buf = new char[1];//чтоб не было ошибки
+					if (size != 0) {
+						buf = new char[size];
+						core::fread(file_inode, 0, size, buf);
+					}
+					if (core::fopen(path2) == 0 && path2 != "/") {
+						core::fcreate(path2);
+						int new_file_inode = core::fopen(path2);
+						if (new_file_inode >= 0 && path2 != "/") {
+							if (size != 0) {
+								core::fwrite(new_file_inode, 0, size, buf);
+							}
+						}
+						else {
+							cout << "не удалось содать файл " << path2 << endl;
+						}
+					}
+					else {
+						cout << "файл " << path2 << " уже существует" << endl;
+					}
+				}
+				else {
+					cout << "ошибка. файл " << path << " является директорией" << endl;
+				}
+			}
+			else {
+				cout << "не удалось открыть файл " << path << endl;
+			}
+		}
+	};
+
+	GV::cmds["append"] = [](std::vector <std::string> args) {
 		if (args.size()>1) {
 			string path = GV::os.relative_to_full_path(args[0]);
 			int size = std::stoi(args[1]);
@@ -236,7 +295,7 @@ void set_filesystem_commands() {
 			cout << "недостаточно аргументов. \nструктрура комманды: append <path> <count>" << endl;
 		}
 	};
-	GV::cmds["read"] = [](std::vector < std::string> args) {
+	GV::cmds["read"] = [](std::vector <std::string> args) {
 		if (args.size() > 2) {
 			string path = GV::os.relative_to_full_path(args[0]);
 			int offset = std::stoi(args[1]);
@@ -261,7 +320,7 @@ void set_filesystem_commands() {
 			cout << "недостаточно аргументов. \nструктрура комманды: read <path> <offset> <count>" << endl;
 		}
 	};
-	GV::cmds["write"] = [](std::vector < std::string> args) {
+	GV::cmds["write"] = [](std::vector <std::string> args) {
 		if (args.size() > 2) {
 			string path = GV::os.relative_to_full_path(args[0]);
 			int offset = std::stoi(args[1]);
@@ -287,6 +346,36 @@ void set_filesystem_commands() {
 		}
 		else {
 			cout << "недостаточно аргументов. \nструктрура комманды: write <path> <offset> <count>" << endl;
+		}
+	};
+	GV::cmds["chmod"] = [](std::vector<std::string> args) {
+		if (args.size() > 1) {
+			string path = GV::os.relative_to_full_path(args[0]);
+			int rwx = std::stoi(args[1], 0, 8);
+
+			int file_inode = core::fopen(path);
+			if (file_inode || path == "/") {
+				auto attrs = core::fget_attributes(file_inode);
+				if (
+					GV::os.current_user.uid == 0
+					|| GV::os.current_user.gid == 0
+					|| attrs.uid == GV::os.current_user.uid 
+					|| attrs.gid == GV::os.current_user.gid
+					) {
+					attrs.mode = util::write_rwxrwxrwx(attrs.mode, rwx);
+					core::fset_attributes(file_inode, attrs);
+				}
+				else {
+					cout << "права доступа не изменены." << endl;
+					cout << "вы не владелец файла." << endl;
+				}
+			}
+			else {
+				cout << "не удалось найти файл " << "path" << endl;
+ 			}
+		}
+		else {
+			cout << "недостаточно аргументов. chmod <path> <777>" << endl;
 		}
 	};
 }

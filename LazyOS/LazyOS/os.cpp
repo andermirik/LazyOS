@@ -64,7 +64,6 @@ std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::user_get()
 
 int LazyOS::user_login(std::string login, std::string pswd)
 {
-	
 
 	pswd = util::stupid_hash(pswd);
 
@@ -159,6 +158,27 @@ int LazyOS::user_rnm(std::string login, std::string new_login)
 	return -1;
 }
 
+int LazyOS::user_pswd(std::string login, std::string new_pswd)
+{
+	new_pswd = util::stupid_hash(new_pswd);
+	int inode_number = core::fopen("/etc/users");
+	int size = core::fsize(inode_number);
+
+	for (int i = 0; i < size / 64; i++) {
+		user temp_user;
+		core::fread(inode_number, i * 64, 64, (char*)&temp_user);
+		if (strcmp(temp_user.login, login.c_str()) == 0) {
+			
+			strcpy_s(temp_user.pswd, new_pswd.c_str());
+			core::fwrite(inode_number, i * 64, 64, (char*)&temp_user);
+			return temp_user.uid;
+			
+		}
+	}
+
+	return -1;
+}
+
 LazyOS::user LazyOS::user_read(int user_number)
 {
 	user ret;
@@ -193,7 +213,7 @@ std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::group_get()
 int LazyOS::group_add(std::string name, std::string pswd)
 {
 	pswd = util::stupid_hash(pswd);
-	if (current_user.gid == 0) {
+	if (current_user.gid == 0xFFFFFFFF) {
 
 		int inode_number = core::fopen("/etc/groups");
 		int size = core::fsize(inode_number);

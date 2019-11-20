@@ -1,4 +1,4 @@
-#include "utils.h"
+ï»¿#include "utils.h"
 #include "core.h"
 #include "os.h"
 #include <iostream>
@@ -7,6 +7,8 @@
 
 #include <map>
 #include <functional>
+
+#include <sstream>
 
 using std::string;
 using std::cout;
@@ -30,24 +32,35 @@ int main() {
 
 	util::set_text_color(colors::White);	
 
-
 	set_commands();
 	
 #if 0
 	GV::cmds["init"]({});
 	GV::os.current_user = LazyOS::user();
 #endif
-	GV::cmds["users"]({ "login" });
 
+	util::set_text_color(colors::LightBlue);
+	std::ifstream logo("logo.txt");
+	std::stringstream ss;
+	ss << logo.rdbuf();
+	cout << ss.str() << std::endl;
+	logo.close();
+	util::set_text_color(colors::White);
+	cout << endl;
+
+	GV::cmds["users"]({ "login" });
 	if (std::string(GV::os.current_user.login) == ""){
 		system("pause");
 		return 0;
 	}
+	
+
 	GV::os.dirs = util::split("/", '/');
 
 	string line;
 	while (true) {
-		cout << util::join(GV::os.dirs, "/");
+		//cout << util::join(GV::os.dirs, "/");
+		cout << GV::os.current_user.login;
 		cout << "$ ";
 		std::getline(std::cin, line);
 
@@ -63,7 +76,7 @@ int main() {
 			}
 		}
 		if (!worked) {
-			cout << "Íå íàéäåíà êîììàíäà " << command << endl;
+			cout << "ÐÐµ Ð½Ð°Ð¹Ð´ÐµÐ½Ð° ÐºÐ¾Ð¼Ð¼Ð°Ð½Ð´Ð° " << command << endl;
 		}
 
 	}

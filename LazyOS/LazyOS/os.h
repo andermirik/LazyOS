@@ -72,6 +72,7 @@ public:
 	int user_add(std::string login, std::string pswd);
 	int user_del(std::string login);
 	int user_rnm(std::string login, std::string new_login);
+	int user_pswd(std::string login, std::string new_pswd);
 
 	user user_read(int user_number);
 	void user_write(int user_number, user& u);
