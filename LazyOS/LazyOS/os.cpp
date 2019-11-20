@@ -89,6 +89,9 @@ int LazyOS::user_add(std::string login, std::string pswd)
 	for (int i = 0; i < size / 64; i++) {
 		user temp_user;
 		core::fread(inode_number, i*64, 64, (char*)&temp_user);
+		if (strcmp(temp_user.login, login.c_str()) == 0) {
+			return -1;
+		}
 		if (strcmp(temp_user.login, "") == 0) {
 			user write_user(i, login, pswd);
 
@@ -128,7 +131,8 @@ int LazyOS::user_del(std::string login)
 		core::fread(inode_number, i * 64, 64, (char*)&temp_user);
 		if (std::string(temp_user.login) == login) {
 			if (i != 0) {
-				strcpy_s(temp_user.login, "");
+				//strcpy_s(temp_user.login, "");
+				temp_user.uid = 0xFFFFFFFF;
 				core::fwrite(inode_number, i * 64, 64, (char*)&temp_user);
 				return temp_user.uid;
 			}
@@ -150,7 +154,13 @@ int LazyOS::user_rnm(std::string login, std::string new_login)
 			if (i != 0) {
 				strcpy_s(temp_user.login, new_login.c_str());
 				core::fwrite(inode_number, i * 64, 64, (char*)&temp_user);
+				core::frename("/home/" + std::string(login) + "/", new_login);
+				if (GV::os.sudo_temp_user.uid == temp_user.uid)
+					strcpy(GV::os.sudo_temp_user.login, new_login.c_str());
 				return temp_user.uid;
+			}
+			else {
+				return -1;
 			}
 		}
 	}

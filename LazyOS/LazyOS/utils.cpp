@@ -68,7 +68,10 @@ namespace util {
 
 	uint16_t write_rwxrwxrwx(uint16_t mode, uint16_t num)
 	{
-		mode |= (num &0x1FF);
+		uint16_t type = util::read_first_4_bits(mode);
+		mode = 0;
+		mode = util::write_first_4_bits(mode, type);
+		mode |= (num & 0x1FF);
 		return mode;
 	}
 

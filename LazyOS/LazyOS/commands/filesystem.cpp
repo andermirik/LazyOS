@@ -181,9 +181,14 @@ void set_filesystem_commands() {
 		if (args.size() > 1) {
 			string path = GV::os.relative_to_full_path(args[0]);
 			string path2 = GV::os.relative_to_full_path(args[1]);
-			if (path == path2)
+			if (path == path2) {
+				cout << path2 << " уже существует" << endl;
 				return;
-
+			}
+			if (path2[path2.size() - 1] == '/') {
+				cout << "второй файл не должен быть директорией." << endl;
+				return;
+			}
 
 			int file_inode = core::fopen(path);
 			if (path != "/" && file_inode > 0) {
@@ -229,7 +234,10 @@ void set_filesystem_commands() {
 				cout << path2 << " уже существует" << endl;
 				return;
 			}
-
+			if (path2[path2.size() - 1] == '/') {
+				cout << "второй файл не должен быть директорией." << endl;
+				return;
+			}
 
 			int file_inode = core::fopen(path);
 			if (path != "/" && file_inode > 0) {
@@ -360,7 +368,7 @@ void set_filesystem_commands() {
 					GV::os.current_user.uid == 0
 					|| GV::os.current_user.gid == 0
 					|| attrs.uid == GV::os.current_user.uid 
-					|| attrs.gid == GV::os.current_user.gid
+					|| (attrs.gid == GV::os.current_user.gid && attrs.gid != 0xFFFFFFFF)
 					) {
 					attrs.mode = util::write_rwxrwxrwx(attrs.mode, rwx);
 					core::fset_attributes(file_inode, attrs);

@@ -34,7 +34,7 @@ int main() {
 
 	set_commands();
 	
-#if 0
+#if 1
 	GV::cmds["init"]({});
 	GV::os.current_user = LazyOS::user();
 #endif
