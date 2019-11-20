@@ -1,5 +1,6 @@
 #include "../globals.h"
 #include <iostream>
+#include "../utils.h"
 
 using std::string;
 using std::cout;
@@ -20,5 +21,8 @@ void set_default_commands() {
 
 	GV::cmds["clear"] = [](std::vector<string> args) {
 		system("cls");
+	};
+	GV::cmds["whereami"] = [](std::vector<string> args) {
+		cout << "вы сейчас находитесь в " << util::join(GV::os.dirs, "/") << endl;
 	};
 }
