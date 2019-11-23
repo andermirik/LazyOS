@@ -61,7 +61,6 @@ std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::user_get()
 
 	return users;
 }
-
 int LazyOS::user_login(std::string login, std::string pswd)
 {
 
@@ -79,7 +78,6 @@ int LazyOS::user_login(std::string login, std::string pswd)
 	}
 	return -1;
 }
-
 int LazyOS::user_add(std::string login, std::string pswd)
 {
 	pswd = util::stupid_hash(pswd);
@@ -91,19 +89,6 @@ int LazyOS::user_add(std::string login, std::string pswd)
 		core::fread(inode_number, i*64, 64, (char*)&temp_user);
 		if (strcmp(temp_user.login, login.c_str()) == 0) {
 			return -1;
-		}
-		if (strcmp(temp_user.login, "") == 0) {
-			user write_user(i, login, pswd);
-
-			core::fwrite(inode_number, i * 64, 64, (char*)&write_user);
-			if (i != 0) {
-				core::fcreate("/home/" + std::string(login) + "/");
-				inode attrs = core::fget_attributes(core::fopen("/home/" + std::string(login) + "/"));
-				attrs.uid = i;
-				attrs.gid = write_user.gid;
-				core::fset_attributes(core::fopen("/home/" + std::string(login) + "/"), attrs);
-			}
-			return write_user.uid;
 		}
 	}
 	user write_user(size / 64, login, pswd);
@@ -119,7 +104,6 @@ int LazyOS::user_add(std::string login, std::string pswd)
 
 	return write_user.uid;
 }
-
 int LazyOS::user_del(std::string login)
 {
 
@@ -141,7 +125,6 @@ int LazyOS::user_del(std::string login)
 
 	return -1;
 }
-
 int LazyOS::user_rnm(std::string login, std::string new_login)
 {
 	int inode_number = core::fopen("/etc/users");
@@ -167,7 +150,6 @@ int LazyOS::user_rnm(std::string login, std::string new_login)
 
 	return -1;
 }
-
 int LazyOS::user_pswd(std::string login, std::string new_pswd)
 {
 	new_pswd = util::stupid_hash(new_pswd);
@@ -196,7 +178,6 @@ LazyOS::user LazyOS::user_read(int user_number)
 	core::fread(inode_number, user_number * 64, 64, (char*)&ret);
 	return ret;
 }
-
 void LazyOS::user_write(int user_number, user& u)
 {
 	int inode_number = core::fopen("/etc/users");
@@ -213,41 +194,35 @@ std::vector<std::tuple<uint32_t, uint32_t, std::string>> LazyOS::group_get()
 	group temp_group;
 	for (int i = 0; i < size / 64; i++) {
 		core::fread(inode_number, i * 64, 64, (char*)&temp_group);
-		if (std::string(temp_group.name) != "")
-			users.push_back(std::make_tuple(temp_group.gid, temp_group.oid, temp_group.name));
+		users.push_back(std::make_tuple(temp_group.gid, temp_group.oid, temp_group.name));
 	}
 
 	return users;
 }
-
 int LazyOS::group_add(std::string name, std::string pswd)
 {
 	pswd = util::stupid_hash(pswd);
-	if (current_user.gid == 0xFFFFFFFF) {
+	if (sudo_temp_user.gid == 0xFFFFFFFF || sudo_temp_user.uid == 0) {
 
 		int inode_number = core::fopen("/etc/groups");
 		int size = core::fsize(inode_number);
 
 		for (int i = 0; i < size / 64; i++) {
+			if (sudo_temp_user.uid == 0) {
+				return -1;
+			}
 			group temp_group;
 			core::fread(inode_number, i * 64, 64, (char*)&temp_group);
-			if (strcmp(temp_group.name, "") == 0) {
-				group write_group(i, current_user.uid, name, pswd);
-				core::fwrite(inode_number, i * 64, 64, (char*)&write_group);
-
-				user_read(current_user.uid);
-				current_user.gid = write_group.gid;
-				user_write(current_user.uid, current_user);
-
-				return write_group.gid;
+			if (strcmp(temp_group.name, name.c_str()) == 0) {
+				return -1;
 			}
 		}
-		group write_group(size / 64, current_user.uid, name, pswd);
+		group write_group(size / 64, sudo_temp_user.uid, name, pswd);
 		core::fappend(inode_number, 64, (char*)&write_group);
 
-		user_read(current_user.uid);
-		current_user.gid = write_group.gid;
-		user_write(current_user.uid, current_user);
+		sudo_temp_user = user_read(sudo_temp_user.uid);
+		sudo_temp_user.gid = write_group.gid;
+		user_write(sudo_temp_user.uid, sudo_temp_user);
 
 		return write_group.gid;
 	}
@@ -255,7 +230,6 @@ int LazyOS::group_add(std::string name, std::string pswd)
 		return -1;
 	}
 }
-
 int LazyOS::group_del(std::string name, std::string pswd)
 {
 	pswd = util::stupid_hash(pswd);
@@ -266,15 +240,97 @@ int LazyOS::group_del(std::string name, std::string pswd)
 		group temp_group;
 		core::fread(inode_number, i * 64, 64, (char*)&temp_group);
 		if (std::string(temp_group.name) == name && std::string(temp_group.pswd) == pswd) {
-			if (temp_group.gid != 0) {
-				strcpy_s(temp_group.name, "");
+			if (temp_group.gid != 0 && temp_group.gid != -1) {
+				temp_group.gid = -1;
 				core::fwrite(inode_number, i * 64, 64, (char*)&temp_group);
-				return temp_group.gid;
+				return 0;
+			}
+			else {
+				return -1;
 			}
 		}
 	}
 	return -1;
 }
+
+int LazyOS::group_rename(std::string name, std::string pswd, std::string new_name)
+{
+	pswd = util::stupid_hash(pswd);
+	int inode_number = core::fopen("/etc/groups");
+	int size = core::fsize(inode_number);
+
+	for (int i = 0; i < size / 64; i++) {
+		group temp_group;
+		core::fread(inode_number, i * 64, 64, (char*)&temp_group);
+		if (std::string(temp_group.name) == name && std::string(temp_group.pswd) == pswd) {
+			if (temp_group.gid != 0 && temp_group.gid != -1) {
+				strcpy(temp_group.name, new_name.c_str());
+				core::fwrite(inode_number, i * 64, 64, (char*)&temp_group);
+				return 0;
+			}
+			else {
+				return -1;
+			}
+		}
+	}
+	return -1;
+}
+
+int LazyOS::group_pswd(std::string name, std::string pswd, std::string new_pswd)
+{
+	pswd = util::stupid_hash(pswd);
+	int inode_number = core::fopen("/etc/groups");
+	int size = core::fsize(inode_number);
+
+	for (int i = 0; i < size / 64; i++) {
+		group temp_group;
+		core::fread(inode_number, i * 64, 64, (char*)&temp_group);
+		if (std::string(temp_group.name) == name && std::string(temp_group.pswd) == pswd) {
+			if (temp_group.gid != 0 && temp_group.gid != -1) {
+				strcpy(temp_group.pswd, new_pswd.c_str());
+				core::fwrite(inode_number, i * 64, 64, (char*)&temp_group);
+				return 0;
+			}
+			else {
+				return -1;
+			}
+		}
+	}
+	return -1;
+}
+
+int LazyOS::group_leave()
+{
+	if (sudo_temp_user.uid != 0) {
+		GV::os.sudo_temp_user.gid = 0xFFFFFFFF;
+		user_write(sudo_temp_user.uid, sudo_temp_user);
+	}
+	return 0;
+}
+
+int LazyOS::group_join(std::string name, std::string pswd)
+{
+	pswd = util::stupid_hash(pswd);
+	int inode_number = core::fopen("/etc/groups");
+	int size = core::fsize(inode_number);
+
+	for (int i = 0; i < size / 64; i++) {
+		group temp_group;
+		core::fread(inode_number, i * 64, 64, (char*)&temp_group);
+		if (std::string(temp_group.name) == name && std::string(temp_group.pswd) == pswd) {
+			if (temp_group.gid != -1 && sudo_temp_user.uid !=0) {
+				sudo_temp_user.gid = temp_group.gid;
+				user_write(sudo_temp_user.uid, sudo_temp_user);
+				return 0;
+			}
+			else {
+				return -1;
+			}
+		}
+	}
+	return -1;
+}
+
 
 
 LazyOS::LazyOS()

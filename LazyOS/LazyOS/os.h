@@ -81,6 +81,9 @@ public:
 
 	int group_add(std::string name, std::string pswd);
 	int group_del(std::string name, std::string pswd);
+	int group_rename(std::string name, std::string pswd, std::string new_name);
+	int group_pswd(std::string name, std::string pswd, std::string new_pswd);
+	int group_leave();
 	int group_join(std::string name, std::string pswd);
 	
 

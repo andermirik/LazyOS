@@ -227,16 +227,14 @@ int delete_file(int inode_number, LazyOS::inode& inode, std::vector<std::string>
 					LazyOS::directory_file file;
 					memcpy(&file, buf + i * sizeof(LazyOS::directory_file), sizeof(LazyOS::directory_file));
 					if (dirs[dirs.size() - 2] == util::file_to_filename(file)) { //swap files
-						files[inode.size / 64 - 1] = LazyOS::directory_file();
-						memcpy(buf, files, 512);
-						GV::os.write_block_indirect(inode, inode.size / 512, buf);
-
-						GV::os.read_block_indirect(inode, i / 8, buf);
-						memcpy(files, buf, 512);
-
 						LazyOS::inode to_del_inode = GV::os.read_inode(files[i % 8].n_inode);
 
 						if (uid == 0 || gid == 0 || (rwx[7] && uid == to_del_inode.uid) || (rwx[4] && gid == to_del_inode.gid && gid != 0xFFFFFFFF) || rwx[1]) {
+							files[inode.size / 64 - 1] = LazyOS::directory_file();
+							memcpy(buf, files, 512);
+							GV::os.write_block_indirect(inode, inode.size / 512, buf);
+							GV::os.read_block_indirect(inode, i / 8, buf);
+							memcpy(files, buf, 512);
 
 							recursive_clear(files[i % 8].n_inode, to_del_inode);
 
