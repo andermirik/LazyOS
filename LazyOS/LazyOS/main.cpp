@@ -53,7 +53,6 @@ int main() {
 		system("pause");
 		return 0;
 	}
-	
 
 	GV::os.dirs = util::split("/", '/');
 
